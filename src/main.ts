@@ -7,8 +7,10 @@ console.log(phys2);
 let phys3: NtRectangle = new NtRectangle(new NtVec(200, 60), 150, 120);
 console.log(phys3);
 
-let canvas: HTMLCanvasElement = document.getElementById('myCanvas');
-let canvasContext: CanvasRenderingContext2D = canvas.getContext("2d");
+let canvas: HTMLCanvasElement =
+    <HTMLCanvasElement> document.getElementById('myCanvas');
+let canvasContext: CanvasRenderingContext2D =
+    <CanvasRenderingContext2D> canvas.getContext("2d");
 
 let renderer = new Renderer(canvasContext);
 let world: NtWorld = new NtWorld(renderer);
