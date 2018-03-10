@@ -1,4 +1,4 @@
 class NtAABB {
-    readonly min: NtVec = new NtVec();
-    readonly max: NtVec = new NtVec();
+    readonly min: NtVec2 = new NtVec2();
+    readonly max: NtVec2 = new NtVec2();
 }

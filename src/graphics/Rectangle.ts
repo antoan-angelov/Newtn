@@ -5,7 +5,7 @@ class Rectangle implements IRenderable {
     }
 
     draw(canvas: CanvasRenderingContext2D) {
-        let position: NtVec = this.object.position;
+        let position: NtVec2 = this.object.position;
         let width = this.object.width;
         let height = this.object.height;
         if (this.object.collisions.size > 0) {

@@ -64,8 +64,8 @@ var NtAABB =  (function () {
 }());
 var NtBase =  (function () {
     function NtBase(position) {
-        this.position = new NtVec();
-        this.velocity = new NtVec();
+        this.position = new NtVec2();
+        this.velocity = new NtVec2();
         this.collisions = new Set();
         this.aabb = new NtAABB();
         this.restitution = 1;
@@ -219,6 +219,46 @@ var NtVec =  (function () {
     };
     return NtVec;
 }());
+var NtVec2 =  (function () {
+    function NtVec2(x, y) {
+        if (x === void 0) { x = 0; }
+        if (y === void 0) { y = 0; }
+        this.x = x;
+        this.y = y;
+    }
+    NtVec2.prototype.add = function (other) {
+        this.x += other.x;
+        this.y += other.y;
+    };
+    NtVec2.prototype.subtract = function (other) {
+        this.x -= other.x;
+        this.y -= other.y;
+    };
+    NtVec2.prototype.fromVec = function (other) {
+        this.x = other.x;
+        this.y = other.y;
+    };
+    NtVec2.prototype.set = function (x, y) {
+        this.x = x;
+        this.y = y;
+    };
+    NtVec2.prototype.toString = function () {
+        return "NtVec2{x: " + this.x + ", y: " + this.y + "}";
+    };
+    NtVec2.add = function (A, B) {
+        return new NtVec2(A.x + B.x, A.y + B.y);
+    };
+    NtVec2.subtract = function (A, B) {
+        return new NtVec2(A.x - B.x, A.y - B.y);
+    };
+    NtVec2.multiply = function (A, n) {
+        return new NtVec2(A.x * n, A.y * n);
+    };
+    NtVec2.dotProduct = function (A, B) {
+        return A.x * B.x + A.y * B.y;
+    };
+    return NtVec2;
+}());
 var NtWorld =  (function () {
     function NtWorld(renderer) {
         this.renderer = renderer;
@@ -261,8 +301,8 @@ var NtWorld =  (function () {
 }());
 var NtAABB =  (function () {
     function NtAABB() {
-        this.min = new NtVec();
-        this.max = new NtVec();
+        this.min = new NtVec2();
+        this.max = new NtVec2();
     }
     return NtAABB;
 }());
@@ -280,15 +320,15 @@ var NtCollisionResolver =  (function () {
     NtCollisionResolver.prototype.resolve = function (manifold) {
         var A = manifold.A;
         var B = manifold.B;
-        var relativeVelocity = NtVec.subtract(B.velocity, A.velocity);
+        var relativeVelocity = NtVec2.subtract(B.velocity, A.velocity);
         var collisionNormal = manifold.normal;
-        var velocityAlondNormal = NtVec.dotProduct(relativeVelocity, collisionNormal);
+        var velocityAlondNormal = NtVec2.dotProduct(relativeVelocity, collisionNormal);
         var e = Math.min(A.restitution, B.restitution);
         var j = -(1 + e) * velocityAlondNormal;
         j /= A.inverse_mass + B.inverse_mass;
-        var impulse = NtVec.multiply(collisionNormal, j);
-        A.velocity.subtract(NtVec.multiply(impulse, A.inverse_mass));
-        B.velocity.add(NtVec.multiply(impulse, B.inverse_mass));
+        var impulse = NtVec2.multiply(collisionNormal, j);
+        A.velocity.subtract(NtVec2.multiply(impulse, A.inverse_mass));
+        B.velocity.add(NtVec2.multiply(impulse, B.inverse_mass));
     };
     return NtCollisionResolver;
 }());
@@ -298,10 +338,10 @@ var NtCollisionUtils =  (function () {
     NtCollisionUtils.AABBvsAABB = function (manifold) {
         var A = manifold.A;
         var B = manifold.B;
-        var n = NtVec.subtract(B.position, A.position);
+        var n = NtVec2.subtract(B.position, A.position);
         var abox = A.aabb;
         var bbox = B.aabb;
-        var overlap = new NtVec();
+        var overlap = new NtVec2();
         var a_extent = (abox.max.x - abox.min.x) / 2;
         var b_extent = (bbox.max.x - bbox.min.x) / 2;
         overlap.x = a_extent + b_extent - Math.abs(n.x);
@@ -318,11 +358,11 @@ var NtCollisionUtils =  (function () {
     };
     NtCollisionUtils.calculateNormal = function (manifold, overlap, n) {
         if (overlap.x > overlap.y) {
-            manifold.normal = new NtVec(0, Math.sign(n.x));
+            manifold.normal = new NtVec2(0, Math.sign(n.x));
             manifold.penetration = overlap.x;
         }
         else {
-            manifold.normal = new NtVec(Math.sign(n.y), 0);
+            manifold.normal = new NtVec2(Math.sign(n.y), 0);
             manifold.penetration = overlap.y;
         }
     };
@@ -331,28 +371,28 @@ var NtCollisionUtils =  (function () {
 var NtManifold =  (function () {
     function NtManifold(A, B) {
         this.penetration = 0;
-        this.normal = new NtVec();
+        this.normal = new NtVec2();
         this.A = A;
         this.B = B;
     }
     return NtManifold;
 }());
-var phys1 = new NtRectangle(new NtVec(370, 160), 50, 40);
+var phys1 = new NtRectangle(new NtVec2(370, 160), 50, 40);
 phys1.mass = 20;
 phys1.velocity.set(-1.5, 0);
 console.log(phys1);
-var phys2 = new NtRectangle(new NtVec(10, 160), 50, 40);
+var phys2 = new NtRectangle(new NtVec2(10, 160), 50, 40);
 phys2.mass = 20;
 phys2.velocity.set(1.5, 0);
 console.log(phys2);
-var phys3 = new NtRectangle(new NtVec(200, 190), 150, 120);
+var phys3 = new NtRectangle(new NtVec2(200, 190), 150, 120);
 phys3.mass = 20;
 console.log(phys3);
-var phys4 = new NtRectangle(new NtVec(210, -60), 50, 40);
+var phys4 = new NtRectangle(new NtVec2(210, -60), 50, 40);
 phys4.mass = 20;
 phys4.velocity.set(0, 1.5);
 console.log(phys4);
-var phys5 = new NtRectangle(new NtVec(210, 370), 50, 40);
+var phys5 = new NtRectangle(new NtVec2(210, 370), 50, 40);
 phys5.mass = 20;
 phys5.velocity.set(0, -1.5);
 console.log(phys5);

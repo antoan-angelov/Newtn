@@ -1,7 +1,7 @@
 class NtRectangle extends NtBase {
     width: number;
     height: number;
-    constructor(position: NtVec, width: number, height: number) {
+    constructor(position: NtVec2, width: number, height: number) {
         super(position);
         this.width = width;
         this.height = height;

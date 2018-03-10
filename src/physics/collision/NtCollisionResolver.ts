@@ -10,10 +10,10 @@ class NtCollisionResolver {
     resolve(manifold: NtManifold) {
         let A: NtBase = manifold.A;
         let B: NtBase = manifold.B;
-        let relativeVelocity: NtVec = NtVec.subtract(B.velocity, A.velocity);
+        let relativeVelocity: NtVec2 = NtVec2.subtract(B.velocity, A.velocity);
         let collisionNormal = manifold.normal;
         let velocityAlondNormal: number =
-            NtVec.dotProduct(relativeVelocity, collisionNormal);
+            NtVec2.dotProduct(relativeVelocity, collisionNormal);
         // calculate restitution
         let e: number = Math.min(A.restitution, B.restitution);
 
@@ -22,8 +22,8 @@ class NtCollisionResolver {
         j /= A.inverse_mass + B.inverse_mass;
 
         // apply impulse
-        let impulse: NtVec = NtVec.multiply(collisionNormal, j);
-        A.velocity.subtract(NtVec.multiply(impulse, A.inverse_mass));
-        B.velocity.add(NtVec.multiply(impulse, B.inverse_mass));
+        let impulse: NtVec2 = NtVec2.multiply(collisionNormal, j);
+        A.velocity.subtract(NtVec2.multiply(impulse, A.inverse_mass));
+        B.velocity.add(NtVec2.multiply(impulse, B.inverse_mass));
     }
 }
