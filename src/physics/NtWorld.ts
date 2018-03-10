@@ -1,23 +1,28 @@
 class NtWorld {
     renderer: NtIRenderer;
     list: NtBase[];
+    collisionResolver: NtCollisionResolver;
     constructor(renderer: NtIRenderer) {
         this.renderer = renderer;
         this.list = [];
+        this.collisionResolver = new NtCollisionResolver();
     }
     step() {
         let that = this;
         this.list.forEach(function(element) {
             element.collisions.clear();
+            element.step();
         });
         this.list.forEach(function(outer) {
             that.list.forEach(function(inner) {
-                if (outer == inner) {
+                if (outer == inner || outer.collisions.has(inner)) {
                     return;
                 }
-                if (outer.collidesWith(inner)) {
+                let manifold: NtManifold = new NtManifold(inner, outer);
+                if (that.collisionResolver.hasCollision(manifold)) {
                     outer.collisions.add(inner);
                     inner.collisions.add(outer);
+                    that.collisionResolver.resolve(manifold);
                 }
             });
         });

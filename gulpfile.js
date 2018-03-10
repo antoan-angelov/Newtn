@@ -7,7 +7,8 @@ var cp = require('child_process');
 var distFiles = [
     'dist/graphics/*.js',
     'dist/physics/*.js',
-    'dist/main.js'
+    'dist/physics/collision/*.js',
+    'dist/main.js',
 ];
 
 gulp.task('generateConcatenatedJs', function(){

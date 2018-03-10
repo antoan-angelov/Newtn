@@ -13,13 +13,13 @@ class Rectangle implements IRenderable {
         } else {
             canvas.strokeStyle = '#000000'
         }
-        canvas.lineWidth = 1;
+        canvas.lineWidth = 3;
         canvas.beginPath();
-        canvas.moveTo(position.x, position.y);
-        canvas.lineTo(position.x + width, position.y);
-        canvas.lineTo(position.x + width, position.y + height);
-        canvas.lineTo(position.x, position.y + height);
-        canvas.lineTo(position.x, position.y);
+        canvas.moveTo(position.x - width/2, position.y - height/2);
+        canvas.lineTo(position.x + width/2, position.y - height/2);
+        canvas.lineTo(position.x + width/2, position.y + height/2);
+        canvas.lineTo(position.x - width/2, position.y + height/2);
+        canvas.lineTo(position.x - width/2, position.y - height/2);
         canvas.stroke();
     }
 
