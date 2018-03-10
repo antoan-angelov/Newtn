@@ -1,18 +1,4 @@
 "use strict";
-var phys1 = new NtRectangle(new NtVec(10, 30), 50, 40);
-console.log(phys1);
-var phys2 = new NtRectangle(new NtVec(100, 30), 20, 80);
-console.log(phys2);
-var phys3 = new NtRectangle(new NtVec(200, 60), 150, 120);
-console.log(phys3);
-var canvas = document.getElementById('myCanvas');
-var canvasContext = canvas.getContext("2d");
-var renderer = new Renderer(canvasContext);
-var world = new NtWorld(renderer);
-world.add(phys1);
-world.add(phys2);
-world.add(phys3);
-renderer.draw();
 var Rectangle =  (function () {
     function Rectangle(object) {
         this.object = object;
@@ -21,6 +7,12 @@ var Rectangle =  (function () {
         var position = this.object.position;
         var width = this.object.width;
         var height = this.object.height;
+        if (this.object.collisions.size > 0) {
+            canvas.strokeStyle = '#ff0000';
+        }
+        else {
+            canvas.strokeStyle = '#000000';
+        }
         canvas.lineWidth = 1;
         canvas.beginPath();
         canvas.moveTo(position.x, position.y);
@@ -66,7 +58,10 @@ var Renderer =  (function () {
 var NtBase =  (function () {
     function NtBase(position) {
         this.position = position;
+        this.id = NtBase.counter++;
+        this.collisions = new Set();
     }
+    NtBase.counter = 0;
     return NtBase;
 }());
 var __extends = (this && this.__extends) || (function () {
@@ -87,6 +82,18 @@ var NtRectangle =  (function (_super) {
         _this.height = height;
         return _this;
     }
+    NtRectangle.prototype.collidesWith = function (object) {
+        if (object instanceof NtRectangle) {
+            return this.doRectanglesOverlap(object);
+        }
+        return false;
+    };
+    NtRectangle.prototype.doRectanglesOverlap = function (other) {
+        return !(other.position.x + other.width < this.position.x
+            || this.position.x + this.width < other.position.x
+            || other.position.y + other.height < this.position.y
+            || this.position.y + this.height < other.position.y);
+    };
     NtRectangle.prototype.toString = function () {
         return "NtRectangle{position: " + this.position + ", width: " + this.width + ", "
             + ("height: " + this.height + "}");
@@ -108,6 +115,23 @@ var NtWorld =  (function () {
         this.renderer = renderer;
         this.list = [];
     }
+    NtWorld.prototype.step = function () {
+        var that = this;
+        this.list.forEach(function (element) {
+            element.collisions.clear();
+        });
+        this.list.forEach(function (outer) {
+            that.list.forEach(function (inner) {
+                if (outer == inner) {
+                    return;
+                }
+                if (outer.collidesWith(inner)) {
+                    outer.collisions.add(inner);
+                    inner.collisions.add(outer);
+                }
+            });
+        });
+    };
     NtWorld.prototype.add = function (object) {
         this.list.push(object);
         this.renderer.add(object);
@@ -122,3 +146,18 @@ var NtWorld =  (function () {
     };
     return NtWorld;
 }());
+var phys1 = new NtRectangle(new NtVec(10, 30), 50, 40);
+console.log(phys1);
+var phys2 = new NtRectangle(new NtVec(190, 30), 20, 80);
+console.log(phys2);
+var phys3 = new NtRectangle(new NtVec(200, 60), 150, 120);
+console.log(phys3);
+var canvas = document.getElementById('myCanvas');
+var canvasContext = canvas.getContext("2d");
+var renderer = new Renderer(canvasContext);
+var world = new NtWorld(renderer);
+world.add(phys1);
+world.add(phys2);
+world.add(phys3);
+world.step();
+renderer.draw();

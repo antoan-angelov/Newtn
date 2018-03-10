@@ -8,6 +8,11 @@ class Rectangle implements IRenderable {
         let position: NtVec = this.object.position;
         let width = this.object.width;
         let height = this.object.height;
+        if (this.object.collisions.size > 0) {
+            canvas.strokeStyle = '#ff0000';
+        } else {
+            canvas.strokeStyle = '#000000'
+        }
         canvas.lineWidth = 1;
         canvas.beginPath();
         canvas.moveTo(position.x, position.y);

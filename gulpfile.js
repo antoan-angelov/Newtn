@@ -4,7 +4,11 @@ var uglify = require('gulp-uglify');
 var sequence = require('gulp-sequence');
 var strip = require('gulp-strip-comments');
 var cp = require('child_process');
-var distFiles = ['dist/**/*.js'];
+var distFiles = [
+    'dist/graphics/*.js',
+    'dist/physics/*.js',
+    'dist/main.js'
+];
 
 gulp.task('generateConcatenatedJs', function(){
   return gulp.src(distFiles)
