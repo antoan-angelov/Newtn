@@ -5,11 +5,11 @@ TypeScript minimalist 2D physics library.
 Just include either `newtn.js` or `newtn.min.js` in you html file.
 
 ## Development
-Install the `npm` dependencies:
+Install the `npm` dependencies:  
 ``npm install --save-dev gulp gulp-concat gulp-uglify gulp-sequence gulp-strip-comments``
 
-To compile, either:
+To compile, either:  
 Run `gulp compileAndGenerateLibFiles` for transcompiling to JavaScript
 
-Or:
+Or:  
 Run `gulp watch` to compile every time you save a TypeScript file.
