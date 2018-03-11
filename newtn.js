@@ -42,8 +42,8 @@ var Renderer =  (function () {
     Renderer.prototype.draw = function () {
         this.canvas.clearRect(0, 0, this.width, this.height);
         var gradient = this.canvas.createLinearGradient(0, 0, this.width, this.height);
-        gradient.addColorStop(0, '#82B0BF');
-        gradient.addColorStop(1, "#90C3D4");
+        gradient.addColorStop(0, '#90C3D4');
+        gradient.addColorStop(1, "#82B0BF");
         this.canvas.fillStyle = gradient;
         this.canvas.fillRect(0, 0, this.width, this.height);
         this.draw_lines();
