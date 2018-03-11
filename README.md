@@ -1,11 +1,14 @@
 # Newtn
 TypeScript minimalist 2D physics library.
 
-## Dependencies
-`npm install --save-dev gulp gulp-concat gulp-uglify gulp-sequence gulp-strip-comments`
+## Usage
+Just include either `newtn.js` or `newtn.min.js` in you html file.
 
 ## Development
-Either:
+Install the `npm` dependencies:
+``npm install --save-dev gulp gulp-concat gulp-uglify gulp-sequence gulp-strip-comments``
+
+To compile, either:
 Run `gulp compileAndGenerateLibFiles` for transcompiling to JavaScript
 
 Or:
