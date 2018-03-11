@@ -4,6 +4,14 @@ class NtCollisionResolver {
         let B: NtBase = manifold.B;
         if (A instanceof NtRectangle && B instanceof NtRectangle) {
             return NtCollisionUtils.AABBvsAABB(manifold);
+        } else if (A instanceof NtCircle && B instanceof NtCircle) {
+            return NtCollisionUtils.CircleVsCircle(manifold);
+        } else if (A instanceof NtRectangle && B instanceof NtCircle) {
+            return NtCollisionUtils.AABBvsCircle(manifold);
+        } else if (A instanceof NtCircle && B instanceof NtRectangle) {
+            manifold.A = B;
+            manifold.B = A;
+            return NtCollisionUtils.AABBvsCircle(manifold);
         }
         return false;
     }

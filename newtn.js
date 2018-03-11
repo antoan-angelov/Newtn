@@ -1,4 +1,32 @@
 "use strict";
+var Circle =  (function () {
+    function Circle(object) {
+        this.object = object;
+    }
+    Circle.prototype.draw = function (canvas) {
+        var position = this.object.position;
+        var radius = this.object.radius;
+        if (this.object.collisions.size > 0) {
+            canvas.strokeStyle = 'rgba(247, 186, 197, 0.8)';
+            canvas.fillStyle = 'rgba(247, 186, 197, 0.6)';
+        }
+        else {
+            canvas.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            canvas.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        }
+        canvas.lineWidth = 2;
+        canvas.beginPath();
+        canvas.arc(position.x, position.y, radius, 0, 2 * Math.PI);
+        canvas.closePath();
+        canvas.stroke();
+        canvas.fill();
+    };
+    Circle.prototype.print = function () {
+        console.log("Circle{position: " + this.object.position + ", " +
+            ("radius: " + this.object.radius + "}"));
+    };
+    return Circle;
+}());
 var Rectangle =  (function () {
     function Rectangle(object) {
         this.object = object;
@@ -28,7 +56,7 @@ var Rectangle =  (function () {
     };
     Rectangle.prototype.print = function () {
         console.log("Rectangle{position: " + this.object.position + ", " +
-            ("width: " + this.object.width + ", " + this.object.height));
+            ("width: " + this.object.width + ", " + this.object.height + "}"));
     };
     return Rectangle;
 }());
@@ -74,6 +102,9 @@ var Renderer =  (function () {
     Renderer.prototype.add = function (object) {
         if (object instanceof NtRectangle) {
             this.renderables.push(new Rectangle(object));
+        }
+        else if (object instanceof NtCircle) {
+            this.renderables.push(new Circle(object));
         }
     };
     Renderer.prototype.remove = function (object) {
@@ -130,6 +161,33 @@ var NtBase =  (function () {
     NtBase.counter = 0;
     return NtBase;
 }());
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+var NtCircle =  (function (_super) {
+    __extends(NtCircle, _super);
+    function NtCircle(position, radius) {
+        var _this = _super.call(this, position) || this;
+        _this.radius = radius;
+        return _this;
+    }
+    NtCircle.prototype.step = function () {
+        _super.prototype.step.call(this);
+        this.aabb.min.set(this.position.x - this.radius, this.position.y - this.radius);
+        this.aabb.max.set(this.position.x + this.radius, this.position.y + this.radius);
+    };
+    NtCircle.prototype.toString = function () {
+        return "NtCircle{position: " + this.position + ", radius: " + this.radius + "}";
+    };
+    return NtCircle;
+}(NtBase));
 var NtCollisionUtils =  (function () {
     function NtCollisionUtils() {
     }
@@ -261,21 +319,38 @@ var NtVec2 =  (function () {
     NtVec2.prototype.add = function (other) {
         this.x += other.x;
         this.y += other.y;
+        return this;
     };
     NtVec2.prototype.subtract = function (other) {
         this.x -= other.x;
         this.y -= other.y;
+        return this;
+    };
+    NtVec2.prototype.multiply = function (n) {
+        this.x *= n;
+        this.y *= n;
+        return this;
+    };
+    NtVec2.prototype.divide = function (n) {
+        this.x /= n;
+        this.y /= n;
+        return this;
     };
     NtVec2.prototype.fromVec = function (other) {
         this.x = other.x;
         this.y = other.y;
+        return this;
     };
     NtVec2.prototype.set = function (x, y) {
         this.x = x;
         this.y = y;
+        return this;
     };
     NtVec2.prototype.toString = function () {
         return "NtVec2{x: " + this.x + ", y: " + this.y + "}";
+    };
+    NtVec2.fromVec = function (A) {
+        return new NtVec2(A.x, A.y);
     };
     NtVec2.add = function (A, B) {
         return new NtVec2(A.x + B.x, A.y + B.y);
@@ -286,8 +361,24 @@ var NtVec2 =  (function () {
     NtVec2.multiply = function (A, n) {
         return new NtVec2(A.x * n, A.y * n);
     };
+    NtVec2.divide = function (A, n) {
+        return new NtVec2(A.x / n, A.y / n);
+    };
     NtVec2.dotProduct = function (A, B) {
         return A.x * B.x + A.y * B.y;
+    };
+    NtVec2.distance = function (A, B) {
+        var dx = A.x - B.x;
+        var dy = A.y - B.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    };
+    NtVec2.distanceSquared = function (A, B) {
+        var dx = A.x - B.x;
+        var dy = A.y - B.y;
+        return dx * dx + dy * dy;
+    };
+    NtVec2.equal = function (A, B) {
+        return A.x == B.x && A.y == B.y;
     };
     return NtVec2;
 }());
@@ -347,6 +438,17 @@ var NtCollisionResolver =  (function () {
         if (A instanceof NtRectangle && B instanceof NtRectangle) {
             return NtCollisionUtils.AABBvsAABB(manifold);
         }
+        else if (A instanceof NtCircle && B instanceof NtCircle) {
+            return NtCollisionUtils.CircleVsCircle(manifold);
+        }
+        else if (A instanceof NtRectangle && B instanceof NtCircle) {
+            return NtCollisionUtils.AABBvsCircle(manifold);
+        }
+        else if (A instanceof NtCircle && B instanceof NtRectangle) {
+            manifold.A = B;
+            manifold.B = A;
+            return NtCollisionUtils.AABBvsCircle(manifold);
+        }
         return false;
     };
     NtCollisionResolver.prototype.resolve = function (manifold) {
@@ -398,6 +500,70 @@ var NtCollisionUtils =  (function () {
             manifold.penetration = overlap.y;
         }
     };
+    NtCollisionUtils.CircleVsCircle = function (manifold) {
+        var A = manifold.A;
+        var B = manifold.B;
+        var n = NtVec2.subtract(B.position, A.position);
+        var min_distance = A.radius + B.radius;
+        min_distance *= min_distance;
+        if (NtVec2.distanceSquared(A.position, B.position) > min_distance) {
+            return false;
+        }
+        var distance = NtVec2.distance(A.position, B.position);
+        if (distance != 0) {
+            manifold.penetration = min_distance - distance;
+            manifold.normal = NtVec2.divide(n, distance);
+        }
+        else {
+            manifold.penetration = A.radius;
+            manifold.normal = new NtVec2(1, 0);
+        }
+        return true;
+    };
+    NtCollisionUtils.AABBvsCircle = function (manifold) {
+        var A = manifold.A;
+        var B = manifold.B;
+        var abox = A.aabb;
+        var temp_list = [
+            new NtVec2(abox.min.x, abox.min.y),
+            new NtVec2(abox.max.x, abox.min.y),
+            new NtVec2(abox.min.x, abox.max.y),
+            new NtVec2(abox.max.x, abox.max.y),
+            new NtVec2(abox.min.x, abox.min.y),
+            new NtVec2(abox.min.x, abox.max.y),
+            new NtVec2(abox.max.x, abox.min.y),
+            new NtVec2(abox.max.x, abox.max.y)
+        ];
+        var closest = new NtVec2(Number.MAX_VALUE, Number.MAX_VALUE);
+        var min_dist = Number.MAX_VALUE;
+        for (var i = 0; i < 4; i++) {
+            var side = NtCollisionUtils.segmentProjection(B.position, temp_list[i * 2], temp_list[i * 2 + 1]);
+            var side_dist = NtVec2.distanceSquared(side, B.position);
+            if (min_dist > side_dist) {
+                closest = side;
+                min_dist = side_dist;
+            }
+        }
+        var dist_squared = NtVec2.distanceSquared(closest, B.position);
+        if (dist_squared > B.radius * B.radius) {
+            return false;
+        }
+        var distance = NtVec2.distance(closest, B.position);
+        var normal = NtVec2.subtract(B.position, closest).divide(distance);
+        manifold.penetration = B.radius - distance;
+        manifold.normal = normal;
+        return true;
+    };
+    NtCollisionUtils.segmentProjection = function (point, A, B) {
+        var segment_length_squared = NtVec2.distanceSquared(A, B);
+        if (segment_length_squared == 0) {
+            return NtVec2.fromVec(A);
+        }
+        var t = ((point.x - A.x) * (B.x - A.x)
+            + (point.y - A.y) * (B.y - A.y)) / segment_length_squared;
+        t = Math.max(0, Math.min(1, t));
+        return new NtVec2(A.x + t * (B.x - A.x), A.y + t * (B.y - A.y));
+    };
     return NtCollisionUtils;
 }());
 var NtManifold =  (function () {
@@ -428,15 +594,41 @@ var phys5 = new NtRectangle(new NtVec2(210, 370), 50, 40);
 phys5.mass = 20;
 phys5.velocity.set(0, -1.5);
 console.log(phys5);
+var circle1 = new NtCircle(new NtVec2(100, 50), 20);
+circle1.mass = 20;
+circle1.velocity.set(0.5, 0.5);
+console.log(circle1);
+var circle2 = new NtCircle(new NtVec2(250, 50), 30);
+circle2.mass = 30;
+circle2.velocity.set(-0.5, 0.5);
+console.log(circle2);
+var circle3 = new NtCircle(new NtVec2(150, 150), 40);
+circle3.mass = 340;
+circle3.velocity.set(0, -1);
+console.log(circle3);
+var circle4 = new NtCircle(new NtVec2(150, 400), 40);
+circle4.mass = 20;
+circle4.velocity.set(0, -0.5);
+console.log(circle4);
+var rect1 = new NtRectangle(new NtVec2(150, 270), 250, 140);
+rect1.mass = 40;
+console.log(rect1);
+var circle5 = new NtCircle(new NtVec2(150, 50), 40);
+circle5.mass = 20;
+circle5.velocity.set(0, 0.8);
+console.log(circle5);
+var circle6 = new NtCircle(new NtVec2(450, 250), 40);
+circle6.mass = 20;
+circle6.velocity.set(-0.8, 0);
+console.log(circle6);
 var canvas = document.getElementById('myCanvas');
 var canvasContext = canvas.getContext("2d");
 var renderer = new Renderer(canvasContext, canvas.width, canvas.height);
 var world = new NtWorld(renderer);
-world.add(phys1);
-world.add(phys2);
-world.add(phys3);
-world.add(phys4);
-world.add(phys5);
+world.add(circle4);
+world.add(circle5);
+world.add(circle6);
+world.add(rect1);
 setInterval(function () {
     world.step();
     renderer.draw();

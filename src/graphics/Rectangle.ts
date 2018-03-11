@@ -29,6 +29,6 @@ class Rectangle implements IRenderable {
 
     print() {
         console.log(`Rectangle{position: ${this.object.position}, ` +
-            `width: ${this.object.width}, ${this.object.height}`);
+            `width: ${this.object.width}, ${this.object.height}}`);
     }
 }

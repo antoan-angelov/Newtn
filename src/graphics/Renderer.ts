@@ -44,6 +44,8 @@ class Renderer implements NtIRenderer {
     add(object: NtBase):void {
         if (object instanceof NtRectangle) {
             this.renderables.push(new Rectangle(object));
+        } else if (object instanceof NtCircle) {
+            this.renderables.push(new Circle(object));
         }
     }
     remove(object: NtBase):void {

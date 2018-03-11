@@ -22,6 +22,41 @@ phys5.mass = 20;
 phys5.velocity.set(0, -1.5);
 console.log(phys5);
 
+let circle1: NtCircle = new NtCircle(new NtVec2(100, 50), 20);
+circle1.mass = 20;
+circle1.velocity.set(0.5, 0.5);
+console.log(circle1);
+
+let circle2: NtCircle = new NtCircle(new NtVec2(250, 50), 30);
+circle2.mass = 30;
+circle2.velocity.set(-0.5, 0.5);
+console.log(circle2);
+
+let circle3: NtCircle = new NtCircle(new NtVec2(150, 150), 40);
+circle3.mass = 340;
+circle3.velocity.set(0, -1);
+console.log(circle3);
+
+
+let circle4: NtCircle = new NtCircle(new NtVec2(150, 400), 40);
+circle4.mass = 20;
+circle4.velocity.set(0, -0.5);
+console.log(circle4);
+
+let rect1: NtRectangle = new NtRectangle(new NtVec2(150, 270), 250, 140);
+rect1.mass = 40;
+console.log(rect1);
+
+let circle5: NtCircle = new NtCircle(new NtVec2(150, 50), 40);
+circle5.mass = 20;
+circle5.velocity.set(0, 0.8);
+console.log(circle5);
+
+let circle6: NtCircle = new NtCircle(new NtVec2(450, 250), 40);
+circle6.mass = 20;
+circle6.velocity.set(-0.8, 0);
+console.log(circle6);
+
 let canvas: HTMLCanvasElement =
     <HTMLCanvasElement> document.getElementById('myCanvas');
 let canvasContext: CanvasRenderingContext2D =
@@ -29,11 +64,18 @@ let canvasContext: CanvasRenderingContext2D =
 
 let renderer = new Renderer(canvasContext, canvas.width, canvas.height);
 let world: NtWorld = new NtWorld(renderer);
-world.add(phys1);
-world.add(phys2);
-world.add(phys3);
-world.add(phys4);
-world.add(phys5);
+//world.add(phys1);
+// world.add(phys2);
+ //world.add(phys3);
+// world.add(phys4);
+// world.add(phys5);
+// world.add(circle1);
+// world.add(circle2);
+// world.add(circle3);
+world.add(circle4);
+world.add(circle5);
+world.add(circle6);
+world.add(rect1);
 
 setInterval(function() {
     world.step();
