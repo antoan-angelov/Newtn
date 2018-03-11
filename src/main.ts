@@ -27,7 +27,7 @@ let canvas: HTMLCanvasElement =
 let canvasContext: CanvasRenderingContext2D =
     <CanvasRenderingContext2D> canvas.getContext("2d");
 
-let renderer = new Renderer(canvasContext);
+let renderer = new Renderer(canvasContext, canvas.width, canvas.height);
 let world: NtWorld = new NtWorld(renderer);
 world.add(phys1);
 world.add(phys2);
@@ -36,7 +36,6 @@ world.add(phys4);
 world.add(phys5);
 
 setInterval(function() {
-    canvasContext.clearRect(0, 0, canvas.width, canvas.height);
     world.step();
     renderer.draw();
 }, 33);

@@ -9,18 +9,22 @@ class Rectangle implements IRenderable {
         let width = this.object.width;
         let height = this.object.height;
         if (this.object.collisions.size > 0) {
-            canvas.strokeStyle = '#ff0000';
+            canvas.strokeStyle = 'rgba(247, 186, 197, 0.8)';
+            canvas.fillStyle = 'rgba(247, 186, 197, 0.6)'
         } else {
-            canvas.strokeStyle = '#000000'
+            canvas.strokeStyle = 'rgba(255, 255, 255, 0.8)'
+            canvas.fillStyle = 'rgba(255, 255, 255, 0.5)'
         }
-        canvas.lineWidth = 3;
+        canvas.lineWidth = 2;
         canvas.beginPath();
         canvas.moveTo(position.x - width/2, position.y - height/2);
         canvas.lineTo(position.x + width/2, position.y - height/2);
         canvas.lineTo(position.x + width/2, position.y + height/2);
         canvas.lineTo(position.x - width/2, position.y + height/2);
         canvas.lineTo(position.x - width/2, position.y - height/2);
+        canvas.closePath();
         canvas.stroke();
+        canvas.fill();
     }
 
     print() {

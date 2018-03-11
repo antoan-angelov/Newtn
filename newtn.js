@@ -8,19 +8,23 @@ var Rectangle =  (function () {
         var width = this.object.width;
         var height = this.object.height;
         if (this.object.collisions.size > 0) {
-            canvas.strokeStyle = '#ff0000';
+            canvas.strokeStyle = 'rgba(247, 186, 197, 0.8)';
+            canvas.fillStyle = 'rgba(247, 186, 197, 0.6)';
         }
         else {
-            canvas.strokeStyle = '#000000';
+            canvas.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            canvas.fillStyle = 'rgba(255, 255, 255, 0.5)';
         }
-        canvas.lineWidth = 3;
+        canvas.lineWidth = 2;
         canvas.beginPath();
         canvas.moveTo(position.x - width / 2, position.y - height / 2);
         canvas.lineTo(position.x + width / 2, position.y - height / 2);
         canvas.lineTo(position.x + width / 2, position.y + height / 2);
         canvas.lineTo(position.x - width / 2, position.y + height / 2);
         canvas.lineTo(position.x - width / 2, position.y - height / 2);
+        canvas.closePath();
         canvas.stroke();
+        canvas.fill();
     };
     Rectangle.prototype.print = function () {
         console.log("Rectangle{position: " + this.object.position + ", " +
@@ -29,14 +33,42 @@ var Rectangle =  (function () {
     return Rectangle;
 }());
 var Renderer =  (function () {
-    function Renderer(canvas) {
+    function Renderer(canvas, width, height) {
         this.canvas = canvas;
         this.renderables = [];
+        this.width = width;
+        this.height = height;
     }
     Renderer.prototype.draw = function () {
+        this.canvas.clearRect(0, 0, this.width, this.height);
+        var gradient = this.canvas.createLinearGradient(0, 0, this.width, this.height);
+        gradient.addColorStop(0, '#82B0BF');
+        gradient.addColorStop(1, "#90C3D4");
+        this.canvas.fillStyle = gradient;
+        this.canvas.fillRect(0, 0, this.width, this.height);
+        this.draw_lines();
         for (var _i = 0, _a = this.renderables; _i < _a.length; _i++) {
             var object = _a[_i];
             object.draw(this.canvas);
+        }
+    };
+    Renderer.prototype.draw_lines = function () {
+        this.canvas.lineWidth = 0.5;
+        var line_space = 100;
+        var lines_per_row = this.width / line_space;
+        var lines_per_column = this.height / line_space;
+        this.canvas.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        for (var i = 0; i < lines_per_column; i++) {
+            this.canvas.beginPath();
+            this.canvas.moveTo(0, i * line_space);
+            this.canvas.lineTo(this.width, i * line_space);
+            this.canvas.stroke();
+        }
+        for (var i = 0; i < lines_per_row; i++) {
+            this.canvas.beginPath();
+            this.canvas.moveTo(i * line_space, 0);
+            this.canvas.lineTo(i * line_space, this.height);
+            this.canvas.stroke();
         }
     };
     Renderer.prototype.add = function (object) {
@@ -398,7 +430,7 @@ phys5.velocity.set(0, -1.5);
 console.log(phys5);
 var canvas = document.getElementById('myCanvas');
 var canvasContext = canvas.getContext("2d");
-var renderer = new Renderer(canvasContext);
+var renderer = new Renderer(canvasContext, canvas.width, canvas.height);
 var world = new NtWorld(renderer);
 world.add(phys1);
 world.add(phys2);
@@ -406,7 +438,6 @@ world.add(phys3);
 world.add(phys4);
 world.add(phys5);
 setInterval(function () {
-    canvasContext.clearRect(0, 0, canvas.width, canvas.height);
     world.step();
     renderer.draw();
 }, 33);
