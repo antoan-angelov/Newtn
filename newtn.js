@@ -132,13 +132,18 @@ var NtBase =  (function () {
         this.collisions = new Set();
         this.aabb = new NtAABB();
         this.restitution = 1;
+        this.force = new NtVec2();
         this._mass = 0;
         this._inverse_mass = 0;
         this.position.fromVec(position);
         this.id = NtBase.counter++;
     }
-    NtBase.prototype.step = function () {
-        this.position.add(this.velocity);
+    NtBase.prototype.step = function (dt) {
+        this.position.add(NtVec2.multiply(this.velocity, dt));
+        this.velocity.add(NtVec2.multiply(this.force, dt / this.mass));
+    };
+    NtBase.prototype.apply_impulse = function (impulse) {
+        this.velocity.add(NtVec2.multiply(impulse, this.inverse_mass));
     };
     Object.defineProperty(NtBase.prototype, "mass", {
         get: function () {
@@ -178,8 +183,8 @@ var NtCircle =  (function (_super) {
         _this.radius = radius;
         return _this;
     }
-    NtCircle.prototype.step = function () {
-        _super.prototype.step.call(this);
+    NtCircle.prototype.step = function (dt) {
+        _super.prototype.step.call(this, dt);
         this.aabb.min.set(this.position.x - this.radius, this.position.y - this.radius);
         this.aabb.max.set(this.position.x + this.radius, this.position.y + this.radius);
     };
@@ -258,8 +263,8 @@ var NtRectangle =  (function (_super) {
         _this.height = height;
         return _this;
     }
-    NtRectangle.prototype.step = function () {
-        _super.prototype.step.call(this);
+    NtRectangle.prototype.step = function (dt) {
+        _super.prototype.step.call(this, dt);
         this.aabb.min.set(this.position.x - this.width / 2, this.position.y - this.height / 2);
         this.aabb.max.set(this.position.x + this.width / 2, this.position.y + this.height / 2);
     };
@@ -380,6 +385,9 @@ var NtVec2 =  (function () {
     NtVec2.equal = function (A, B) {
         return A.x == B.x && A.y == B.y;
     };
+    NtVec2.negate = function (A) {
+        return new NtVec2(-A.x, -A.y);
+    };
     return NtVec2;
 }());
 var NtWorld =  (function () {
@@ -388,11 +396,11 @@ var NtWorld =  (function () {
         this.list = [];
         this.collisionResolver = new NtCollisionResolver();
     }
-    NtWorld.prototype.step = function () {
+    NtWorld.prototype.step = function (dt) {
         var that = this;
         this.list.forEach(function (element) {
             element.collisions.clear();
-            element.step();
+            element.step(dt);
         });
         this.list.forEach(function (outer) {
             that.list.forEach(function (inner) {
@@ -461,8 +469,8 @@ var NtCollisionResolver =  (function () {
         var j = -(1 + e) * velocityAlondNormal;
         j /= A.inverse_mass + B.inverse_mass;
         var impulse = NtVec2.multiply(collisionNormal, j);
-        A.velocity.subtract(NtVec2.multiply(impulse, A.inverse_mass));
-        B.velocity.add(NtVec2.multiply(impulse, B.inverse_mass));
+        A.apply_impulse(NtVec2.negate(impulse));
+        B.apply_impulse(impulse);
     };
     return NtCollisionResolver;
 }());
@@ -608,18 +616,20 @@ circle3.velocity.set(0, -1);
 console.log(circle3);
 var circle4 = new NtCircle(new NtVec2(150, 400), 40);
 circle4.mass = 20;
-circle4.velocity.set(0, -0.5);
+circle4.force.set(0, -50);
 console.log(circle4);
 var rect1 = new NtRectangle(new NtVec2(150, 270), 250, 140);
-rect1.mass = 40;
+rect1.mass = 4;
+rect1.force.set(3.5, 0);
 console.log(rect1);
 var circle5 = new NtCircle(new NtVec2(150, 50), 40);
 circle5.mass = 20;
-circle5.velocity.set(0, 0.8);
+circle5.force.set(0, 80);
 console.log(circle5);
 var circle6 = new NtCircle(new NtVec2(450, 250), 40);
 circle6.mass = 20;
 circle6.velocity.set(-0.8, 0);
+circle6.apply_impulse(new NtVec2(-580, 0));
 console.log(circle6);
 var canvas = document.getElementById('myCanvas');
 var canvasContext = canvas.getContext("2d");
@@ -630,6 +640,7 @@ world.add(circle5);
 world.add(circle6);
 world.add(rect1);
 setInterval(function () {
-    world.step();
+    var dt = 33 / 1000;
+    world.step(dt);
     renderer.draw();
 }, 33);

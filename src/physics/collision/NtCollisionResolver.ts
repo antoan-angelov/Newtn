@@ -31,7 +31,7 @@ class NtCollisionResolver {
 
         // apply impulse
         let impulse: NtVec2 = NtVec2.multiply(collisionNormal, j);
-        A.velocity.subtract(NtVec2.multiply(impulse, A.inverse_mass));
-        B.velocity.add(NtVec2.multiply(impulse, B.inverse_mass));
+        A.apply_impulse(NtVec2.negate(impulse));
+        B.apply_impulse(impulse);
     }
 }

@@ -6,8 +6,8 @@ class NtRectangle extends NtBase {
         this.width = width;
         this.height = height;
     }
-    step() {
-        super.step();
+    step(dt: number) {
+        super.step(dt);
         this.aabb.min.set(this.position.x - this.width/2,
             this.position.y - this.height/2);
         this.aabb.max.set(this.position.x + this.width/2,

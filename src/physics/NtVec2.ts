@@ -69,4 +69,7 @@ class NtVec2 {
     static equal(A: NtVec2, B: NtVec2): boolean {
         return A.x == B.x && A.y == B.y;
     }
+    static negate(A: NtVec2): NtVec2 {
+        return new NtVec2(-A.x, -A.y);
+    }
 }

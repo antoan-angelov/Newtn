@@ -40,21 +40,23 @@ console.log(circle3);
 
 let circle4: NtCircle = new NtCircle(new NtVec2(150, 400), 40);
 circle4.mass = 20;
-circle4.velocity.set(0, -0.5);
+circle4.force.set(0, -50);
 console.log(circle4);
 
 let rect1: NtRectangle = new NtRectangle(new NtVec2(150, 270), 250, 140);
-rect1.mass = 40;
+rect1.mass = 4;
+rect1.force.set(3.5, 0);
 console.log(rect1);
 
 let circle5: NtCircle = new NtCircle(new NtVec2(150, 50), 40);
 circle5.mass = 20;
-circle5.velocity.set(0, 0.8);
+circle5.force.set(0, 80);
 console.log(circle5);
 
 let circle6: NtCircle = new NtCircle(new NtVec2(450, 250), 40);
 circle6.mass = 20;
 circle6.velocity.set(-0.8, 0);
+circle6.apply_impulse(new NtVec2(-580, 0));
 console.log(circle6);
 
 let canvas: HTMLCanvasElement =
@@ -78,6 +80,7 @@ world.add(circle6);
 world.add(rect1);
 
 setInterval(function() {
-    world.step();
+    let dt: number = 33/1000;
+    world.step(dt);
     renderer.draw();
 }, 33);

@@ -4,8 +4,8 @@ class NtCircle extends NtBase {
         super(position);
         this.radius = radius;
     }
-    step() {
-        super.step();
+    step(dt: number) {
+        super.step(dt);
         this.aabb.min.set(this.position.x - this.radius,
             this.position.y - this.radius);
         this.aabb.max.set(this.position.x + this.radius,

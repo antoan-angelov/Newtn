@@ -7,11 +7,11 @@ class NtWorld {
         this.list = [];
         this.collisionResolver = new NtCollisionResolver();
     }
-    step() {
+    step(dt: number) {
         let that = this;
         this.list.forEach(function(element) {
             element.collisions.clear();
-            element.step();
+            element.step(dt);
         });
         this.list.forEach(function(outer) {
             that.list.forEach(function(inner) {
