@@ -8,6 +8,9 @@ class NtCircleShape extends NtShapeBase {
         return new NtBounds(new NtVec2(-this.radius, -this.radius),
             new NtVec2(this.radius, this.radius));
     }
+    calculate_area(): number {
+        return Math.PI * this.radius * this.radius;
+    }
     toString() {
         return `NtCircleShape{radius: ${this.radius}}`;
     }

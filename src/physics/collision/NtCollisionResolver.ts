@@ -29,7 +29,7 @@ class NtCollisionResolver {
         let velocityAlondNormal: number =
             NtVec2.dotProduct(relativeVelocity, collisionNormal);
         // calculate restitution
-        let e: number = Math.min(A.restitution, B.restitution);
+        let e: number = Math.min(A.material.restitution, B.material.restitution);
 
         // calculate impulse scalar
         let j: number = -(1 + e) * velocityAlondNormal;

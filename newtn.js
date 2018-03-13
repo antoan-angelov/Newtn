@@ -60,7 +60,6 @@ var Rectangle =  (function (_super) {
         return _super.call(this, object) || this;
     }
     Rectangle.prototype.draw = function (canvas) {
-        console.log('rendering');
         var position = this.object.position;
         var rect_shape = this.object.shape;
         var width = rect_shape.width;
@@ -198,25 +197,31 @@ var NtBase =  (function () {
     return NtBase;
 }());
 var NtBody =  (function () {
-    function NtBody(position, shape) {
-        this.position = new NtVec2();
-        this.velocity = new NtVec2();
+    function NtBody(position, shape, material) {
+        if (material === void 0) { material = new NtMaterial(); }
         this.collisions = new Set();
         this.aabb = new NtAABB();
-        this.restitution = 1;
+        this.position = new NtVec2();
+        this.velocity = new NtVec2();
         this.force = new NtVec2();
         this.layers = 1;
         this._mass = 0;
         this._inverse_mass = 0;
         this.position.fromVec(position);
         this.shape = shape;
-        this.id = NtBody.counter++;
+        this.material = material;
+        this.calculate_mass();
     }
     NtBody.prototype.step = function (dt) {
+        this.calculate_mass();
         this.position.add(NtVec2.multiply(this.velocity, dt));
         this.velocity.add(NtVec2.multiply(this.force, dt / this.mass));
         this.aabb.min.setVec(NtVec2.add(this.position, this.shape.bounds.min));
         this.aabb.max.setVec(NtVec2.add(this.position, this.shape.bounds.max));
+    };
+    NtBody.prototype.calculate_mass = function () {
+        this._mass = this.shape.area * this.material.density;
+        this._inverse_mass = 1 / this._mass;
     };
     NtBody.prototype.apply_impulse = function (impulse) {
         this.velocity.add(NtVec2.multiply(impulse, this.inverse_mass));
@@ -224,10 +229,6 @@ var NtBody =  (function () {
     Object.defineProperty(NtBody.prototype, "mass", {
         get: function () {
             return this._mass;
-        },
-        set: function (value) {
-            this._mass = value;
-            this._inverse_mass = 1 / value;
         },
         enumerable: true,
         configurable: true
@@ -239,7 +240,6 @@ var NtBody =  (function () {
         enumerable: true,
         configurable: true
     });
-    NtBody.counter = 0;
     return NtBody;
 }());
 var __extends = (this && this.__extends) || (function () {
@@ -320,6 +320,15 @@ var NtManifold =  (function () {
     function NtManifold() {
     }
     return NtManifold;
+}());
+var NtMaterial =  (function () {
+    function NtMaterial(density, restitution) {
+        if (density === void 0) { density = 0.5; }
+        if (restitution === void 0) { restitution = 1; }
+        this.density = density;
+        this.restitution = restitution;
+    }
+    return NtMaterial;
 }());
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -516,11 +525,22 @@ var NtWorld =  (function () {
 var NtShapeBase =  (function () {
     function NtShapeBase() {
         this._bounds = null;
+        this._area = -1;
     }
     Object.defineProperty(NtShapeBase.prototype, "bounds", {
         get: function () {
             this._bounds = this._bounds || this.calculate_bounds();
             return this._bounds;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(NtShapeBase.prototype, "area", {
+        get: function () {
+            if (this._area == -1) {
+                this._area = this.calculate_area();
+            }
+            return this._area;
         },
         enumerable: true,
         configurable: true
@@ -556,6 +576,9 @@ var NtCircleShape =  (function (_super) {
     NtCircleShape.prototype.calculate_bounds = function () {
         return new NtBounds(new NtVec2(-this.radius, -this.radius), new NtVec2(this.radius, this.radius));
     };
+    NtCircleShape.prototype.calculate_area = function () {
+        return Math.PI * this.radius * this.radius;
+    };
     NtCircleShape.prototype.toString = function () {
         return "NtCircleShape{radius: " + this.radius + "}";
     };
@@ -581,6 +604,9 @@ var NtRectangleShape =  (function (_super) {
     }
     NtRectangleShape.prototype.calculate_bounds = function () {
         return new NtBounds(new NtVec2(-this.width / 2, -this.height / 2), new NtVec2(this.width / 2, this.height / 2));
+    };
+    NtRectangleShape.prototype.calculate_area = function () {
+        return this.width * this.height;
     };
     NtRectangleShape.prototype.toString = function () {
         return "NtRectangleShape{width: " + this.width + ", height: " + this.height + "}";
@@ -628,7 +654,7 @@ var NtCollisionResolver =  (function () {
         var relativeVelocity = NtVec2.subtract(B.velocity, A.velocity);
         var collisionNormal = manifold.normal;
         var velocityAlondNormal = NtVec2.dotProduct(relativeVelocity, collisionNormal);
-        var e = Math.min(A.restitution, B.restitution);
+        var e = Math.min(A.material.restitution, B.material.restitution);
         var j = -(1 + e) * velocityAlondNormal;
         j /= A.inverse_mass + B.inverse_mass;
         var impulse = NtVec2.multiply(collisionNormal, j);
@@ -750,21 +776,21 @@ var NtManifold =  (function () {
     return NtManifold;
 }());
 var circle4 = new NtBody(new NtVec2(150, 400), new NtCircleShape(40));
-circle4.mass = 20;
+circle4.material.density = 0.002;
 circle4.force.set(0, -50);
 console.log(circle4);
 var rect1 = new NtBody(new NtVec2(150, 270), new NtRectangleShape(250, 140));
-rect1.mass = 4;
+rect1.material.density = 0.0004;
 rect1.force.set(3.5, 0);
 console.log(rect1);
 var circle5 = new NtBody(new NtVec2(150, 50), new NtCircleShape(40));
-circle5.mass = 20;
+circle5.material.density = 0.002;
 circle5.force.set(0, 80);
 console.log(circle5);
 var circle6 = new NtBody(new NtVec2(450, 250), new NtCircleShape(40));
-circle6.mass = 20;
+circle6.material.density = 0.002;
 circle6.layers = 4;
-circle6.apply_impulse(new NtVec2(-580, 0));
+circle6.apply_impulse(new NtVec2(-113580, 0));
 console.log(circle6);
 var canvas = document.getElementById('myCanvas');
 var canvasContext = canvas.getContext("2d");
