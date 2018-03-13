@@ -1,11 +1,28 @@
 "use strict";
-var Circle =  (function () {
-    function Circle(object) {
+var Renderable =  (function () {
+    function Renderable(object) {
         this.object = object;
+    }
+    return Renderable;
+}());
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+var Circle =  (function (_super) {
+    __extends(Circle, _super);
+    function Circle(object) {
+        return _super.call(this, object) || this;
     }
     Circle.prototype.draw = function (canvas) {
         var position = this.object.position;
-        var radius = this.object.radius;
+        var radius = this.object.shape.radius;
         if (this.object.collisions.size > 0) {
             canvas.strokeStyle = 'rgba(247, 186, 197, 0.8)';
             canvas.fillStyle = 'rgba(247, 186, 197, 0.6)';
@@ -23,18 +40,31 @@ var Circle =  (function () {
     };
     Circle.prototype.print = function () {
         console.log("Circle{position: " + this.object.position + ", " +
-            ("radius: " + this.object.radius + "}"));
+            ("shape: " + this.object.shape + "}"));
     };
     return Circle;
-}());
-var Rectangle =  (function () {
+}(Renderable));
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+var Rectangle =  (function (_super) {
+    __extends(Rectangle, _super);
     function Rectangle(object) {
-        this.object = object;
+        return _super.call(this, object) || this;
     }
     Rectangle.prototype.draw = function (canvas) {
+        console.log('rendering');
         var position = this.object.position;
-        var width = this.object.width;
-        var height = this.object.height;
+        var rect_shape = this.object.shape;
+        var width = rect_shape.width;
+        var height = rect_shape.height;
         if (this.object.collisions.size > 0) {
             canvas.strokeStyle = 'rgba(247, 186, 197, 0.8)';
             canvas.fillStyle = 'rgba(247, 186, 197, 0.6)';
@@ -56,10 +86,10 @@ var Rectangle =  (function () {
     };
     Rectangle.prototype.print = function () {
         console.log("Rectangle{position: " + this.object.position + ", " +
-            ("width: " + this.object.width + ", " + this.object.height + "}"));
+            ("width: " + this.object.shape + "}"));
     };
     return Rectangle;
-}());
+}(Renderable));
 var Renderer =  (function () {
     function Renderer(canvas, width, height) {
         this.canvas = canvas;
@@ -100,10 +130,10 @@ var Renderer =  (function () {
         }
     };
     Renderer.prototype.add = function (object) {
-        if (object instanceof NtRectangle) {
+        if (object.shape instanceof NtRectangleShape) {
             this.renderables.push(new Rectangle(object));
         }
-        else if (object instanceof NtCircle) {
+        else if (object.shape instanceof NtCircleShape) {
             this.renderables.push(new Circle(object));
         }
     };
@@ -166,6 +196,51 @@ var NtBase =  (function () {
     });
     NtBase.counter = 0;
     return NtBase;
+}());
+var NtBody =  (function () {
+    function NtBody(position, shape) {
+        this.position = new NtVec2();
+        this.velocity = new NtVec2();
+        this.collisions = new Set();
+        this.aabb = new NtAABB();
+        this.restitution = 1;
+        this.force = new NtVec2();
+        this.layers = 1;
+        this._mass = 0;
+        this._inverse_mass = 0;
+        this.position.fromVec(position);
+        this.shape = shape;
+        this.id = NtBody.counter++;
+    }
+    NtBody.prototype.step = function (dt) {
+        this.position.add(NtVec2.multiply(this.velocity, dt));
+        this.velocity.add(NtVec2.multiply(this.force, dt / this.mass));
+        this.aabb.min.setVec(NtVec2.add(this.position, this.shape.bounds.min));
+        this.aabb.max.setVec(NtVec2.add(this.position, this.shape.bounds.max));
+    };
+    NtBody.prototype.apply_impulse = function (impulse) {
+        this.velocity.add(NtVec2.multiply(impulse, this.inverse_mass));
+    };
+    Object.defineProperty(NtBody.prototype, "mass", {
+        get: function () {
+            return this._mass;
+        },
+        set: function (value) {
+            this._mass = value;
+            this._inverse_mass = 1 / value;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(NtBody.prototype, "inverse_mass", {
+        get: function () {
+            return this._inverse_mass;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    NtBody.counter = 0;
+    return NtBody;
 }());
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -352,6 +427,11 @@ var NtVec2 =  (function () {
         this.y = y;
         return this;
     };
+    NtVec2.prototype.setVec = function (A) {
+        this.x = A.x;
+        this.y = A.y;
+        return this;
+    };
     NtVec2.prototype.toString = function () {
         return "NtVec2{x: " + this.x + ", y: " + this.y + "}";
     };
@@ -433,6 +513,80 @@ var NtWorld =  (function () {
     };
     return NtWorld;
 }());
+var NtShapeBase =  (function () {
+    function NtShapeBase() {
+        this._bounds = null;
+    }
+    Object.defineProperty(NtShapeBase.prototype, "bounds", {
+        get: function () {
+            this._bounds = this._bounds || this.calculate_bounds();
+            return this._bounds;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    return NtShapeBase;
+}());
+var NtBounds =  (function () {
+    function NtBounds(min, max) {
+        this.min = new NtVec2();
+        this.max = new NtVec2();
+        this.min = min;
+        this.max = max;
+    }
+    return NtBounds;
+}());
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+var NtCircleShape =  (function (_super) {
+    __extends(NtCircleShape, _super);
+    function NtCircleShape(radius) {
+        var _this = _super.call(this) || this;
+        _this.radius = radius;
+        return _this;
+    }
+    NtCircleShape.prototype.calculate_bounds = function () {
+        return new NtBounds(new NtVec2(-this.radius, -this.radius), new NtVec2(this.radius, this.radius));
+    };
+    NtCircleShape.prototype.toString = function () {
+        return "NtCircleShape{radius: " + this.radius + "}";
+    };
+    return NtCircleShape;
+}(NtShapeBase));
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+var NtRectangleShape =  (function (_super) {
+    __extends(NtRectangleShape, _super);
+    function NtRectangleShape(width, height) {
+        var _this = _super.call(this) || this;
+        _this.width = width;
+        _this.height = height;
+        return _this;
+    }
+    NtRectangleShape.prototype.calculate_bounds = function () {
+        return new NtBounds(new NtVec2(-this.width / 2, -this.height / 2), new NtVec2(this.width / 2, this.height / 2));
+    };
+    NtRectangleShape.prototype.toString = function () {
+        return "NtRectangleShape{width: " + this.width + ", height: " + this.height + "}";
+    };
+    return NtRectangleShape;
+}(NtShapeBase));
 var NtAABB =  (function () {
     function NtAABB() {
         this.min = new NtVec2();
@@ -446,16 +600,22 @@ var NtCollisionResolver =  (function () {
     NtCollisionResolver.prototype.hasCollision = function (manifold) {
         var A = manifold.A;
         var B = manifold.B;
-        if (A instanceof NtRectangle && B instanceof NtRectangle) {
+        var a_shape = A.shape;
+        var b_shape = B.shape;
+        if (a_shape instanceof NtRectangleShape
+            && b_shape instanceof NtRectangleShape) {
             return NtCollisionUtils.AABBvsAABB(manifold);
         }
-        else if (A instanceof NtCircle && B instanceof NtCircle) {
+        else if (a_shape instanceof NtCircleShape
+            && b_shape instanceof NtCircleShape) {
             return NtCollisionUtils.CircleVsCircle(manifold);
         }
-        else if (A instanceof NtRectangle && B instanceof NtCircle) {
+        else if (a_shape instanceof NtRectangleShape
+            && b_shape instanceof NtCircleShape) {
             return NtCollisionUtils.AABBvsCircle(manifold);
         }
-        else if (A instanceof NtCircle && B instanceof NtRectangle) {
+        else if (a_shape instanceof NtCircleShape
+            && b_shape instanceof NtRectangleShape) {
             manifold.A = B;
             manifold.B = A;
             return NtCollisionUtils.AABBvsCircle(manifold);
@@ -514,8 +674,10 @@ var NtCollisionUtils =  (function () {
     NtCollisionUtils.CircleVsCircle = function (manifold) {
         var A = manifold.A;
         var B = manifold.B;
+        var a_shape = A.shape;
+        var b_shape = B.shape;
         var n = NtVec2.subtract(B.position, A.position);
-        var min_distance = A.radius + B.radius;
+        var min_distance = a_shape.radius + b_shape.radius;
         min_distance *= min_distance;
         if (NtVec2.distanceSquared(A.position, B.position) > min_distance) {
             return false;
@@ -526,7 +688,7 @@ var NtCollisionUtils =  (function () {
             manifold.normal = NtVec2.divide(n, distance);
         }
         else {
-            manifold.penetration = A.radius;
+            manifold.penetration = a_shape.radius;
             manifold.normal = new NtVec2(1, 0);
         }
         return true;
@@ -534,6 +696,7 @@ var NtCollisionUtils =  (function () {
     NtCollisionUtils.AABBvsCircle = function (manifold) {
         var A = manifold.A;
         var B = manifold.B;
+        var b_shape = B.shape;
         var abox = A.aabb;
         var temp_list = [
             new NtVec2(abox.min.x, abox.min.y),
@@ -556,12 +719,12 @@ var NtCollisionUtils =  (function () {
             }
         }
         var dist_squared = NtVec2.distanceSquared(closest, B.position);
-        if (dist_squared > B.radius * B.radius) {
+        if (dist_squared > b_shape.radius * b_shape.radius) {
             return false;
         }
         var distance = NtVec2.distance(closest, B.position);
         var normal = NtVec2.subtract(B.position, closest).divide(distance);
-        manifold.penetration = B.radius - distance;
+        manifold.penetration = b_shape.radius - distance;
         manifold.normal = normal;
         return true;
     };
@@ -586,50 +749,19 @@ var NtManifold =  (function () {
     }
     return NtManifold;
 }());
-var phys1 = new NtRectangle(new NtVec2(370, 160), 50, 40);
-phys1.mass = 20;
-phys1.velocity.set(-1.5, 0);
-console.log(phys1);
-var phys2 = new NtRectangle(new NtVec2(10, 160), 50, 40);
-phys2.mass = 20;
-phys2.velocity.set(1.5, 0);
-console.log(phys2);
-var phys3 = new NtRectangle(new NtVec2(200, 190), 150, 120);
-phys3.mass = 20;
-console.log(phys3);
-var phys4 = new NtRectangle(new NtVec2(210, -60), 50, 40);
-phys4.mass = 20;
-phys4.velocity.set(0, 1.5);
-console.log(phys4);
-var phys5 = new NtRectangle(new NtVec2(210, 370), 50, 40);
-phys5.mass = 20;
-phys5.velocity.set(0, -1.5);
-console.log(phys5);
-var circle1 = new NtCircle(new NtVec2(100, 50), 20);
-circle1.mass = 20;
-circle1.velocity.set(0.5, 0.5);
-console.log(circle1);
-var circle2 = new NtCircle(new NtVec2(250, 50), 30);
-circle2.mass = 30;
-circle2.velocity.set(-0.5, 0.5);
-console.log(circle2);
-var circle3 = new NtCircle(new NtVec2(150, 150), 40);
-circle3.mass = 340;
-circle3.velocity.set(0, -1);
-console.log(circle3);
-var circle4 = new NtCircle(new NtVec2(150, 400), 40);
+var circle4 = new NtBody(new NtVec2(150, 400), new NtCircleShape(40));
 circle4.mass = 20;
 circle4.force.set(0, -50);
 console.log(circle4);
-var rect1 = new NtRectangle(new NtVec2(150, 270), 250, 140);
+var rect1 = new NtBody(new NtVec2(150, 270), new NtRectangleShape(250, 140));
 rect1.mass = 4;
 rect1.force.set(3.5, 0);
 console.log(rect1);
-var circle5 = new NtCircle(new NtVec2(150, 50), 40);
+var circle5 = new NtBody(new NtVec2(150, 50), new NtCircleShape(40));
 circle5.mass = 20;
 circle5.force.set(0, 80);
 console.log(circle5);
-var circle6 = new NtCircle(new NtVec2(450, 250), 40);
+var circle6 = new NtBody(new NtVec2(450, 250), new NtCircleShape(40));
 circle6.mass = 20;
 circle6.layers = 4;
 circle6.apply_impulse(new NtVec2(-580, 0));

@@ -5,8 +5,11 @@ var sequence = require('gulp-sequence');
 var strip = require('gulp-strip-comments');
 var cp = require('child_process');
 var distFiles = [
+    'dist/graphics/Renderable.js',
     'dist/graphics/*.js',
     'dist/physics/*.js',
+    'dist/physics/shapes/NtShapeBase.js',
+    'dist/physics/shapes/*.js',
     'dist/physics/collision/*.js',
     'dist/main.js',
 ];

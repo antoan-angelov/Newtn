@@ -1,12 +1,11 @@
-class Circle implements IRenderable {
-    object: NtCircle;
-    constructor(object: NtCircle) {
-        this.object = object;
+class Circle extends Renderable {
+    constructor(object: NtBody) {
+        super(object);
     }
 
     draw(canvas: CanvasRenderingContext2D) {
         let position: NtVec2 = this.object.position;
-        let radius = this.object.radius;
+        let radius = (<NtCircleShape>this.object.shape).radius;
         if (this.object.collisions.size > 0) {
             canvas.strokeStyle = 'rgba(247, 186, 197, 0.8)';
             canvas.fillStyle = 'rgba(247, 186, 197, 0.6)'
@@ -24,6 +23,6 @@ class Circle implements IRenderable {
 
     print() {
         console.log(`Circle{position: ${this.object.position}, ` +
-            `radius: ${this.object.radius}}`);
+            `shape: ${this.object.shape}}`);
     }
 }

@@ -1,6 +1,6 @@
 class NtWorld {
     renderer: NtIRenderer;
-    list: NtBase[];
+    list: NtBody[];
     collisionResolver: NtCollisionResolver;
     constructor(renderer: NtIRenderer) {
         this.renderer = renderer;
@@ -29,11 +29,11 @@ class NtWorld {
             });
         });
     }
-    add(object: NtBase) {
+    add(object: NtBody) {
         this.list.push(object);
         this.renderer.add(object);
     }
-    remove(object: NtBase) {
+    remove(object: NtBody) {
         var index: number = this.list.indexOf(object);
         if (index == -1) {
             return;

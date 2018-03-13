@@ -35,6 +35,11 @@ class NtVec2 {
         this.y = y;
         return this;
     }
+    setVec(A: NtVec2): NtVec2 {
+        this.x = A.x;
+        this.y = A.y;
+        return this;
+    }
     toString() {
         return `NtVec2{x: ${this.x}, y: ${this.y}}`;
     }

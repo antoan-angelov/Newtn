@@ -1,14 +1,20 @@
 class NtCollisionResolver {
     hasCollision(manifold: NtManifold): boolean {
-        let A: NtBase = manifold.A;
-        let B: NtBase = manifold.B;
-        if (A instanceof NtRectangle && B instanceof NtRectangle) {
+        let A: NtBody = manifold.A;
+        let B: NtBody = manifold.B;
+        let a_shape: NtShapeBase = A.shape;
+        let b_shape: NtShapeBase = B.shape;
+        if (a_shape instanceof NtRectangleShape
+                && b_shape instanceof NtRectangleShape) {
             return NtCollisionUtils.AABBvsAABB(manifold);
-        } else if (A instanceof NtCircle && B instanceof NtCircle) {
+        } else if (a_shape instanceof NtCircleShape
+                && b_shape instanceof NtCircleShape) {
             return NtCollisionUtils.CircleVsCircle(manifold);
-        } else if (A instanceof NtRectangle && B instanceof NtCircle) {
+        } else if (a_shape instanceof NtRectangleShape
+                && b_shape instanceof NtCircleShape) {
             return NtCollisionUtils.AABBvsCircle(manifold);
-        } else if (A instanceof NtCircle && B instanceof NtRectangle) {
+        } else if (a_shape instanceof NtCircleShape
+                && b_shape instanceof NtRectangleShape) {
             manifold.A = B;
             manifold.B = A;
             return NtCollisionUtils.AABBvsCircle(manifold);
@@ -16,8 +22,8 @@ class NtCollisionResolver {
         return false;
     }
     resolve(manifold: NtManifold) {
-        let A: NtBase = manifold.A;
-        let B: NtBase = manifold.B;
+        let A: NtBody = manifold.A;
+        let B: NtBody = manifold.B;
         let relativeVelocity: NtVec2 = NtVec2.subtract(B.velocity, A.velocity);
         let collisionNormal = manifold.normal;
         let velocityAlondNormal: number =

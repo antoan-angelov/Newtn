@@ -1,7 +1,7 @@
 class NtCollisionUtils {
     static AABBvsAABB(manifold: NtManifold): boolean  {
-        let A: NtBase = manifold.A;
-        let B: NtBase = manifold.B;
+        let A: NtBody = manifold.A;
+        let B: NtBody = manifold.B;
         let n: NtVec2 = NtVec2.subtract(B.position, A.position);
         let abox: NtAABB = A.aabb;
         let bbox: NtAABB = B.aabb;
@@ -41,10 +41,12 @@ class NtCollisionUtils {
     }
 
     static CircleVsCircle(manifold: NtManifold): boolean {
-        let A: NtCircle = <NtCircle>manifold.A;
-        let B: NtCircle = <NtCircle>manifold.B;
+        let A: NtBody = manifold.A;
+        let B: NtBody = manifold.B;
+        let a_shape: NtCircleShape = <NtCircleShape>A.shape;
+        let b_shape: NtCircleShape = <NtCircleShape>B.shape;
         let n: NtVec2 = NtVec2.subtract(B.position, A.position);
-        let min_distance: number = A.radius + B.radius;
+        let min_distance: number = a_shape.radius + b_shape.radius;
         min_distance *= min_distance;
 
         if (NtVec2.distanceSquared(A.position, B.position) > min_distance) {
@@ -55,15 +57,16 @@ class NtCollisionUtils {
             manifold.penetration = min_distance - distance;
             manifold.normal = NtVec2.divide(n, distance);
         }  else {
-            manifold.penetration = A.radius;
+            manifold.penetration = a_shape.radius;
             manifold.normal = new NtVec2(1, 0);
         }
         return true;
     }
 
     static AABBvsCircle(manifold: NtManifold) {
-        let A: NtRectangle = <NtRectangle>manifold.A;
-        let B: NtCircle = <NtCircle>manifold.B;
+        let A: NtBody = manifold.A;
+        let B: NtBody = manifold.B;
+        let b_shape: NtCircleShape = <NtCircleShape>B.shape;
         let abox: NtAABB = A.aabb;
         let temp_list: NtVec2[] = [
             // top
@@ -90,13 +93,13 @@ class NtCollisionUtils {
             }
         }
         let dist_squared: number = NtVec2.distanceSquared(closest, B.position);
-        if (dist_squared > B.radius * B.radius) {
+        if (dist_squared > b_shape.radius * b_shape.radius) {
             return false;
         }
         let distance: number = NtVec2.distance(closest, B.position);
         let normal: NtVec2 =
             NtVec2.subtract(B.position, closest).divide(distance);
-        manifold.penetration = B.radius - distance;
+        manifold.penetration = b_shape.radius - distance;
         manifold.normal = normal;
         return true;
     }

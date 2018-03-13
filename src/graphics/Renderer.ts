@@ -1,6 +1,6 @@
 class Renderer implements NtIRenderer {
     canvas: CanvasRenderingContext2D;
-    renderables: IRenderable[];
+    renderables: Renderable[];
     width: number;
     height: number;
     constructor(canvas: CanvasRenderingContext2D, width: number,
@@ -41,14 +41,14 @@ class Renderer implements NtIRenderer {
             this.canvas.stroke();
         }
     }
-    add(object: NtBase):void {
-        if (object instanceof NtRectangle) {
+    add(object: NtBody):void {
+        if (object.shape instanceof NtRectangleShape) {
             this.renderables.push(new Rectangle(object));
-        } else if (object instanceof NtCircle) {
+        } else if (object.shape instanceof NtCircleShape) {
             this.renderables.push(new Circle(object));
         }
     }
-    remove(object: NtBase):void {
+    remove(object: NtBody):void {
         let index = this.renderables.findIndex(renderable =>
             renderable.object == object);
         if (index == -1) {

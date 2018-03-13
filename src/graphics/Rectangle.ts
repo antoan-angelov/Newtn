@@ -1,13 +1,13 @@
-class Rectangle implements IRenderable {
-    object: NtRectangle;
-    constructor(object: NtRectangle) {
-        this.object = object;
+class Rectangle extends Renderable {
+    constructor(object: NtBody) {
+        super(object);
     }
 
     draw(canvas: CanvasRenderingContext2D) {
         let position: NtVec2 = this.object.position;
-        let width = this.object.width;
-        let height = this.object.height;
+        let rect_shape: NtRectangleShape = <NtRectangleShape>this.object.shape;
+        let width = rect_shape.width;
+        let height = rect_shape.height;
         if (this.object.collisions.size > 0) {
             canvas.strokeStyle = 'rgba(247, 186, 197, 0.8)';
             canvas.fillStyle = 'rgba(247, 186, 197, 0.6)'
@@ -29,6 +29,6 @@ class Rectangle implements IRenderable {
 
     print() {
         console.log(`Rectangle{position: ${this.object.position}, ` +
-            `width: ${this.object.width}, ${this.object.height}}`);
+            `width: ${this.object.shape}}`);
     }
 }

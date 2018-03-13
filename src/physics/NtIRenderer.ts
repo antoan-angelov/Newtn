@@ -1,5 +1,5 @@
 interface NtIRenderer {
     draw():void;
-    add(object: NtBase):void;
-    remove(object: NtBase):void;
+    add(object: NtBody):void;
+    remove(object: NtBody):void;
 }
