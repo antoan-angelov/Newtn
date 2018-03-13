@@ -55,7 +55,7 @@ console.log(circle5);
 
 let circle6: NtCircle = new NtCircle(new NtVec2(450, 250), 40);
 circle6.mass = 20;
-circle6.velocity.set(-0.8, 0);
+circle6.layers = 4;
 circle6.apply_impulse(new NtVec2(-580, 0));
 console.log(circle6);
 

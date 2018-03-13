@@ -133,6 +133,7 @@ var NtBase =  (function () {
         this.aabb = new NtAABB();
         this.restitution = 1;
         this.force = new NtVec2();
+        this.layers = 1;
         this._mass = 0;
         this._inverse_mass = 0;
         this.position.fromVec(position);
@@ -404,7 +405,9 @@ var NtWorld =  (function () {
         });
         this.list.forEach(function (outer) {
             that.list.forEach(function (inner) {
-                if (outer == inner || outer.collisions.has(inner)) {
+                if (outer == inner
+                    || !(outer.layers & inner.layers)
+                    || outer.collisions.has(inner)) {
                     return;
                 }
                 var manifold = new NtManifold(inner, outer);
@@ -628,7 +631,7 @@ circle5.force.set(0, 80);
 console.log(circle5);
 var circle6 = new NtCircle(new NtVec2(450, 250), 40);
 circle6.mass = 20;
-circle6.velocity.set(-0.8, 0);
+circle6.layers = 4;
 circle6.apply_impulse(new NtVec2(-580, 0));
 console.log(circle6);
 var canvas = document.getElementById('myCanvas');

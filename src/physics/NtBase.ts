@@ -7,6 +7,7 @@ abstract class NtBase {
     restitution: number = 1;
     id: number;
     force: NtVec2 = new NtVec2();
+    layers: number = 1;
     private _mass: number = 0;
     private _inverse_mass: number = 0;
 

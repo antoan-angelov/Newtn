@@ -15,7 +15,9 @@ class NtWorld {
         });
         this.list.forEach(function(outer) {
             that.list.forEach(function(inner) {
-                if (outer == inner || outer.collisions.has(inner)) {
+                if (outer == inner
+                    || !(outer.layers & inner.layers)
+                    || outer.collisions.has(inner)) {
                     return;
                 }
                 let manifold: NtManifold = new NtManifold(inner, outer);
