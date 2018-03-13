@@ -13,3 +13,15 @@ Run `gulp compileAndGenerateLibFiles` for transcompiling to JavaScript
 
 Or:  
 Run `gulp watch` to compile every time you save a TypeScript file.
+
+
+## TODOs
+* friction
+* debug drawing
+* angular velocities
+* custom body skins
+* gravitational pulling
+* more accurate render loop
+* complex bodies
+* static bodies
+* mouse dragging
