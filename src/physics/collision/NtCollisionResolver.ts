@@ -28,6 +28,12 @@ class NtCollisionResolver {
         let collisionNormal = manifold.normal;
         let velocityAlondNormal: number =
             NtVec2.dotProduct(relativeVelocity, collisionNormal);
+
+        // ignore collision if objects are not moving towards each other
+        if (velocityAlondNormal > 0) {
+            return;
+        }
+
         // calculate restitution
         let e: number = Math.min(A.material.restitution, B.material.restitution);
 

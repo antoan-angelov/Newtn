@@ -661,6 +661,9 @@ var NtCollisionResolver =  (function () {
         var relativeVelocity = NtVec2.subtract(B.velocity, A.velocity);
         var collisionNormal = manifold.normal;
         var velocityAlondNormal = NtVec2.dotProduct(relativeVelocity, collisionNormal);
+        if (velocityAlondNormal > 0) {
+            return;
+        }
         var e = Math.min(A.material.restitution, B.material.restitution);
         var j = -(1 + e) * velocityAlondNormal;
         j /= A.inverse_mass + B.inverse_mass;
@@ -799,9 +802,13 @@ var NtManifold =  (function () {
 }());
 var circle4 = new NtBody(new NtVec2(150, 400), new NtCircleShape(40));
 circle4.material.density = 0.002;
-circle4.force.set(-150, -50);
+circle4.force.set(150, -50);
 console.log(circle4);
-var rect1 = new NtBody(new NtVec2(150, 270), new NtRectangleShape(250, 140));
+var circle7 = new NtBody(new NtVec2(450, 400), new NtCircleShape(40));
+circle7.material.density = 0.002;
+circle7.force.set(0, -350);
+console.log(circle7);
+var rect1 = new NtBody(new NtVec2(280, 270), new NtRectangleShape(350, 140));
 rect1.material.density = 10;
 console.log(rect1);
 var circle5 = new NtBody(new NtVec2(150, 50), new NtCircleShape(40));
@@ -817,8 +824,7 @@ var canvasContext = canvas.getContext("2d");
 var renderer = new Renderer(canvasContext, canvas.width, canvas.height);
 var world = new NtWorld(renderer);
 world.add(circle4);
-world.add(circle5);
-world.add(circle6);
+world.add(circle7);
 world.add(rect1);
 setInterval(function () {
     var dt = 33 / 1000;
