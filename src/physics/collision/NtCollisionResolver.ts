@@ -39,5 +39,27 @@ class NtCollisionResolver {
         let impulse: NtVec2 = NtVec2.multiply(collisionNormal, j);
         A.apply_impulse(NtVec2.negate(impulse));
         B.apply_impulse(impulse);
+
+        // calculate friction
+        // recalculate after normal impulse is applied
+        relativeVelocity = NtVec2.subtract(B.velocity, A.velocity);
+        let tangent: NtVec2 = (NtVec2.subtract(relativeVelocity,
+            NtVec2.multiply(collisionNormal, velocityAlondNormal)));
+        tangent.normalize();
+
+        // apply along the friction vector
+        let jt: number = -NtVec2.dotProduct(relativeVelocity, tangent);
+        jt = jt / (A.inverse_mass + B.inverse_mass);
+
+        // following Coulomb's law, mu is average between the two frictions
+        let mu: number = (A.friction + B.friction) / 2;
+        let friction_impulse: NtVec2 = new NtVec2();
+        if (Math.abs(jt) < j * mu) {
+            friction_impulse.setVec(NtVec2.multiply(tangent, jt));
+        } else {
+            friction_impulse.setVec(NtVec2.multiply(tangent, -j * mu))
+        }
+        A.velocity.subtract(NtVec2.multiply(friction_impulse, A.inverse_mass));
+        B.velocity.add(NtVec2.multiply(friction_impulse, B.inverse_mass));
     }
 }

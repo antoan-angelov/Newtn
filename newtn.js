@@ -205,6 +205,7 @@ var NtBody =  (function () {
         this.velocity = new NtVec2();
         this.force = new NtVec2();
         this.layers = 1;
+        this.friction = 1;
         this._mass = 0;
         this._inverse_mass = 0;
         this.position.fromVec(position);
@@ -441,6 +442,12 @@ var NtVec2 =  (function () {
         this.y = A.y;
         return this;
     };
+    NtVec2.prototype.length = function () {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    };
+    NtVec2.prototype.normalize = function () {
+        return this.divide(this.length());
+    };
     NtVec2.prototype.toString = function () {
         return "NtVec2{x: " + this.x + ", y: " + this.y + "}";
     };
@@ -660,6 +667,21 @@ var NtCollisionResolver =  (function () {
         var impulse = NtVec2.multiply(collisionNormal, j);
         A.apply_impulse(NtVec2.negate(impulse));
         B.apply_impulse(impulse);
+        relativeVelocity = NtVec2.subtract(B.velocity, A.velocity);
+        var tangent = (NtVec2.subtract(relativeVelocity, NtVec2.multiply(collisionNormal, velocityAlondNormal)));
+        tangent.normalize();
+        var jt = -NtVec2.dotProduct(relativeVelocity, tangent);
+        jt = jt / (A.inverse_mass + B.inverse_mass);
+        var mu = (A.friction + B.friction) / 2;
+        var friction_impulse = new NtVec2();
+        if (Math.abs(jt) < j * mu) {
+            friction_impulse.setVec(NtVec2.multiply(tangent, jt));
+        }
+        else {
+            friction_impulse.setVec(NtVec2.multiply(tangent, -j * mu));
+        }
+        A.velocity.subtract(NtVec2.multiply(friction_impulse, A.inverse_mass));
+        B.velocity.add(NtVec2.multiply(friction_impulse, B.inverse_mass));
     };
     return NtCollisionResolver;
 }());
@@ -777,11 +799,10 @@ var NtManifold =  (function () {
 }());
 var circle4 = new NtBody(new NtVec2(150, 400), new NtCircleShape(40));
 circle4.material.density = 0.002;
-circle4.force.set(0, -50);
+circle4.force.set(-150, -50);
 console.log(circle4);
 var rect1 = new NtBody(new NtVec2(150, 270), new NtRectangleShape(250, 140));
-rect1.material.density = 0.0004;
-rect1.force.set(3.5, 0);
+rect1.material.density = 10;
 console.log(rect1);
 var circle5 = new NtBody(new NtVec2(150, 50), new NtCircleShape(40));
 circle5.material.density = 0.002;
@@ -789,8 +810,7 @@ circle5.force.set(0, 80);
 console.log(circle5);
 var circle6 = new NtBody(new NtVec2(450, 250), new NtCircleShape(40));
 circle6.material.density = 0.002;
-circle6.layers = 4;
-circle6.apply_impulse(new NtVec2(-113580, 0));
+circle6.force.setVec(new NtVec2(-80, 0));
 console.log(circle6);
 var canvas = document.getElementById('myCanvas');
 var canvasContext = canvas.getContext("2d");

@@ -16,7 +16,6 @@ Run `gulp watch` to compile every time you save a TypeScript file.
 
 
 ## TODOs
-* friction
 * debug drawing
 * angular velocities
 * custom body skins

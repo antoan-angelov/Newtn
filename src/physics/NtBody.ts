@@ -7,6 +7,7 @@ class NtBody {
     shape: NtShapeBase;
     material: NtMaterial;
     layers: number = 1;
+    friction: number = 1;
     private _mass: number = 0;
     private _inverse_mass: number = 0;
 

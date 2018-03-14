@@ -40,6 +40,12 @@ class NtVec2 {
         this.y = A.y;
         return this;
     }
+    length(): number {
+        return Math.sqrt(this.x * this.x + this.y * this.y);
+    }
+    normalize(): NtVec2 {
+        return this.divide(this.length());
+    }
     toString() {
         return `NtVec2{x: ${this.x}, y: ${this.y}}`;
     }
