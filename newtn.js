@@ -1,10 +1,12 @@
 "use strict";
-var Renderable =  (function () {
+var Renderable = /** @class */ (function () {
     function Renderable(object) {
         this.object = object;
     }
     return Renderable;
 }());
+//# sourceMappingURL=Renderable.js.map
+"use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
         ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -15,7 +17,7 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-var Circle =  (function (_super) {
+var Circle = /** @class */ (function (_super) {
     __extends(Circle, _super);
     function Circle(object) {
         return _super.call(this, object) || this;
@@ -44,6 +46,8 @@ var Circle =  (function (_super) {
     };
     return Circle;
 }(Renderable));
+//# sourceMappingURL=Circle.js.map
+"use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
         ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -54,7 +58,7 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-var Rectangle =  (function (_super) {
+var Rectangle = /** @class */ (function (_super) {
     __extends(Rectangle, _super);
     function Rectangle(object) {
         return _super.call(this, object) || this;
@@ -62,8 +66,6 @@ var Rectangle =  (function (_super) {
     Rectangle.prototype.draw = function (canvas) {
         var position = this.object.position;
         var rect_shape = this.object.shape;
-        var width = rect_shape.width;
-        var height = rect_shape.height;
         if (this.object.collisions.size > 0) {
             canvas.strokeStyle = 'rgba(247, 186, 197, 0.8)';
             canvas.fillStyle = 'rgba(247, 186, 197, 0.6)';
@@ -74,11 +76,15 @@ var Rectangle =  (function (_super) {
         }
         canvas.lineWidth = 2;
         canvas.beginPath();
-        canvas.moveTo(position.x - width / 2, position.y - height / 2);
-        canvas.lineTo(position.x + width / 2, position.y - height / 2);
-        canvas.lineTo(position.x + width / 2, position.y + height / 2);
-        canvas.lineTo(position.x - width / 2, position.y + height / 2);
-        canvas.lineTo(position.x - width / 2, position.y - height / 2);
+        var orientation = this.object.orientation;
+        var vertices = rect_shape.vertices;
+        var vertex1 = NtVec2.rotate(vertices[0], orientation);
+        canvas.moveTo(position.x + vertex1.x, position.y + vertex1.y);
+        for (var i = 1; i < vertices.length; i++) {
+            var vertex2 = NtVec2.rotate(vertices[i], orientation);
+            canvas.lineTo(position.x + vertex2.x, position.y + vertex2.y);
+        }
+        canvas.lineTo(position.x + vertex1.x, position.y + vertex1.y);
         canvas.closePath();
         canvas.stroke();
         canvas.fill();
@@ -89,7 +95,9 @@ var Rectangle =  (function (_super) {
     };
     return Rectangle;
 }(Renderable));
-var Renderer =  (function () {
+//# sourceMappingURL=Rectangle.js.map
+"use strict";
+var Renderer = /** @class */ (function () {
     function Renderer(canvas, width, height) {
         this.canvas = canvas;
         this.renderables = [];
@@ -147,56 +155,9 @@ var Renderer =  (function () {
     };
     return Renderer;
 }());
-var NtAABB =  (function () {
-    function NtAABB() {
-        this.min = new NtVec();
-        this.max = new NtVec();
-    }
-    return NtAABB;
-}());
-var NtBase =  (function () {
-    function NtBase(position) {
-        this.position = new NtVec2();
-        this.velocity = new NtVec2();
-        this.collisions = new Set();
-        this.aabb = new NtAABB();
-        this.restitution = 1;
-        this.force = new NtVec2();
-        this.layers = 1;
-        this._mass = 0;
-        this._inverse_mass = 0;
-        this.position.fromVec(position);
-        this.id = NtBase.counter++;
-    }
-    NtBase.prototype.step = function (dt) {
-        this.position.add(NtVec2.multiply(this.velocity, dt));
-        this.velocity.add(NtVec2.multiply(this.force, dt / this.mass));
-    };
-    NtBase.prototype.apply_impulse = function (impulse) {
-        this.velocity.add(NtVec2.multiply(impulse, this.inverse_mass));
-    };
-    Object.defineProperty(NtBase.prototype, "mass", {
-        get: function () {
-            return this._mass;
-        },
-        set: function (value) {
-            this._mass = value;
-            this._inverse_mass = 1 / value;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(NtBase.prototype, "inverse_mass", {
-        get: function () {
-            return this._inverse_mass;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    NtBase.counter = 0;
-    return NtBase;
-}());
-var NtBody =  (function () {
+//# sourceMappingURL=Renderer.js.map
+"use strict";
+var NtBody = /** @class */ (function () {
     function NtBody(position, shape, material) {
         if (material === void 0) { material = new NtMaterial(); }
         this.collisions = new Set();
@@ -206,8 +167,13 @@ var NtBody =  (function () {
         this.force = new NtVec2();
         this.layers = 1;
         this.friction = 1;
+        this.angular_velocity = 0;
+        this.torque = 0;
+        this.orientation = 0;
         this._mass = 0;
         this._inverse_mass = 0;
+        this._inertia = 1;
+        this._inverse_inertia = 1;
         this.position.fromVec(position);
         this.shape = shape;
         this.material = material;
@@ -217,12 +183,20 @@ var NtBody =  (function () {
         this.calculate_mass();
         this.position.add(NtVec2.multiply(this.velocity, dt));
         this.velocity.add(NtVec2.multiply(this.force, dt / this.mass));
-        this.aabb.min.setVec(NtVec2.add(this.position, this.shape.bounds.min));
-        this.aabb.max.setVec(NtVec2.add(this.position, this.shape.bounds.max));
+        this.angular_velocity += this.torque * (dt / this._inertia);
+        this.orientation += this.angular_velocity * dt;
+        var bounds = this.shape.get_bounds_for_orientation(this.orientation);
+        this.aabb.min.setVec(NtVec2.add(this.position, bounds.min));
+        this.aabb.max.setVec(NtVec2.add(this.position, bounds.max));
     };
     NtBody.prototype.calculate_mass = function () {
         this._mass = this.shape.area * this.material.density;
-        this._inverse_mass = 1 / this._mass;
+        if (this._mass != 0) {
+            this._inverse_mass = 1 / this._mass;
+        }
+        else {
+            this._inverse_mass = Number.MAX_VALUE;
+        }
     };
     NtBody.prototype.apply_impulse = function (impulse) {
         this.velocity.add(NtVec2.multiply(impulse, this.inverse_mass));
@@ -241,88 +215,36 @@ var NtBody =  (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(NtBody.prototype, "inertia", {
+        get: function () {
+            return this._inertia;
+        },
+        set: function (value) {
+            this._inertia = value;
+            if (value != 0) {
+                this._inverse_inertia = 1 / value;
+            }
+            else {
+                this._inverse_inertia = Number.MAX_VALUE;
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(NtBody.prototype, "inverse_inertia", {
+        get: function () {
+            return this._inverse_inertia;
+        },
+        enumerable: true,
+        configurable: true
+    });
     return NtBody;
 }());
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-var NtCircle =  (function (_super) {
-    __extends(NtCircle, _super);
-    function NtCircle(position, radius) {
-        var _this = _super.call(this, position) || this;
-        _this.radius = radius;
-        return _this;
-    }
-    NtCircle.prototype.step = function (dt) {
-        _super.prototype.step.call(this, dt);
-        this.aabb.min.set(this.position.x - this.radius, this.position.y - this.radius);
-        this.aabb.max.set(this.position.x + this.radius, this.position.y + this.radius);
-    };
-    NtCircle.prototype.toString = function () {
-        return "NtCircle{position: " + this.position + ", radius: " + this.radius + "}";
-    };
-    return NtCircle;
-}(NtBase));
-var NtCollisionUtils =  (function () {
-    function NtCollisionUtils() {
-    }
-    NtCollisionUtils.AABBvsAABB = function (manifold) {
-        var A = manifold.A;
-        var B = manifold.B;
-        var n = NtVec.subtract(B.position, A.position);
-        var abox = A.aabb;
-        var bbox = B.aabb;
-        var overlap = new NtVec();
-        var a_extent = (abox.max.x - abox.min.x) / 2;
-        var b_extent = (bbox.max.x - bbox.min.x) / 2;
-        overlap.x = a_extent + b_extent - Math.abs(n.x);
-        if (overlap.x > 0) {
-            var a_extent_1 = (abox.max.y - abox.min.y) / 2;
-            var b_extent_1 = (bbox.max.y - bbox.min.y) / 2;
-            overlap.y = a_extent_1 + b_extent_1 - Math.abs(n.y);
-            if (overlap.y > 0) {
-                return NtCollisionUtils.calculateNormal(manifold, overlap, n);
-            }
-        }
-        return false;
-    };
-    NtCollisionUtils.calculateNormal = function (manifold, overlap, n) {
-        if (overlap.x > overlap.y) {
-            if (n.x < 0) {
-                manifold.normal = new NtVec(-1, 0);
-            }
-            else {
-                manifold.normal = new NtVec(1, 0);
-            }
-            manifold.penetration = overlap.x;
-            return true;
-        }
-        else {
-            if (n.y < 0) {
-                manifold.normal = new NtVec(0, -1);
-            }
-            else {
-                manifold.normal = new NtVec(0, 1);
-            }
-            manifold.penetration = overlap.y;
-            return true;
-        }
-    };
-    return NtCollisionUtils;
-}());
-var NtManifold =  (function () {
-    function NtManifold() {
-    }
-    return NtManifold;
-}());
-var NtMaterial =  (function () {
+//# sourceMappingURL=NtBody.js.map
+"use strict";
+//# sourceMappingURL=NtIRenderer.js.map
+"use strict";
+var NtMaterial = /** @class */ (function () {
     function NtMaterial(density, restitution) {
         if (density === void 0) { density = 0.5; }
         if (restitution === void 0) { restitution = 1; }
@@ -331,76 +253,9 @@ var NtMaterial =  (function () {
     }
     return NtMaterial;
 }());
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
-var NtRectangle =  (function (_super) {
-    __extends(NtRectangle, _super);
-    function NtRectangle(position, width, height) {
-        var _this = _super.call(this, position) || this;
-        _this.width = width;
-        _this.height = height;
-        return _this;
-    }
-    NtRectangle.prototype.step = function (dt) {
-        _super.prototype.step.call(this, dt);
-        this.aabb.min.set(this.position.x - this.width / 2, this.position.y - this.height / 2);
-        this.aabb.max.set(this.position.x + this.width / 2, this.position.y + this.height / 2);
-    };
-    NtRectangle.prototype.toString = function () {
-        return "NtRectangle{position: " + this.position + ", width: " + this.width + ", "
-            + ("height: " + this.height + "}");
-    };
-    return NtRectangle;
-}(NtBase));
-var NtVec =  (function () {
-    function NtVec(x, y) {
-        if (x === void 0) { x = 0; }
-        if (y === void 0) { y = 0; }
-        this.x = x;
-        this.y = y;
-    }
-    NtVec.prototype.add = function (other) {
-        this.x += other.x;
-        this.y += other.y;
-    };
-    NtVec.prototype.subtract = function (other) {
-        this.x -= other.x;
-        this.y -= other.y;
-    };
-    NtVec.prototype.fromVec = function (other) {
-        this.x = other.x;
-        this.y = other.y;
-    };
-    NtVec.prototype.set = function (x, y) {
-        this.x = x;
-        this.y = y;
-    };
-    NtVec.prototype.toString = function () {
-        return "NtVec{x: " + this.x + ", y: " + this.y + "}";
-    };
-    NtVec.add = function (A, B) {
-        return new NtVec(A.x + B.x, A.y + B.y);
-    };
-    NtVec.subtract = function (A, B) {
-        return new NtVec(A.x - B.x, A.y - B.y);
-    };
-    NtVec.multiply = function (A, n) {
-        return new NtVec(A.x * n, A.y * n);
-    };
-    NtVec.dotProduct = function (A, B) {
-        return A.x * B.x + A.y * B.y;
-    };
-    return NtVec;
-}());
-var NtVec2 =  (function () {
+//# sourceMappingURL=NtMaterial.js.map
+"use strict";
+var NtVec2 = /** @class */ (function () {
     function NtVec2(x, y) {
         if (x === void 0) { x = 0; }
         if (y === void 0) { y = 0; }
@@ -448,6 +303,11 @@ var NtVec2 =  (function () {
     NtVec2.prototype.normalize = function () {
         return this.divide(this.length());
     };
+    NtVec2.prototype.negate = function () {
+        this.x = -this.x;
+        this.y = -this.y;
+        return this;
+    };
     NtVec2.prototype.toString = function () {
         return "NtVec2{x: " + this.x + ", y: " + this.y + "}";
     };
@@ -485,9 +345,25 @@ var NtVec2 =  (function () {
     NtVec2.negate = function (A) {
         return new NtVec2(-A.x, -A.y);
     };
+    NtVec2.crossProduct = function (A, B) {
+        return A.x * B.y - A.y * B.x;
+    };
+    NtVec2.crossProductScalarSecond = function (A, scalar) {
+        return new NtVec2(scalar * A.y, -scalar * A.x);
+    };
+    NtVec2.crossProductScalarFirst = function (A, scalar) {
+        return new NtVec2(-scalar * A.y, scalar * A.x);
+    };
+    NtVec2.rotate = function (A, angle) {
+        var cos = Math.cos(angle);
+        var sin = Math.sin(angle);
+        return new NtVec2(cos * A.x - sin * A.y, sin * A.x + cos * A.y);
+    };
     return NtVec2;
 }());
-var NtWorld =  (function () {
+//# sourceMappingURL=NtVec2.js.map
+"use strict";
+var NtWorld = /** @class */ (function () {
     function NtWorld(renderer) {
         this.renderer = renderer;
         this.list = [];
@@ -499,21 +375,25 @@ var NtWorld =  (function () {
             element.collisions.clear();
             element.step(dt);
         });
-        this.list.forEach(function (outer) {
-            that.list.forEach(function (inner) {
-                if (outer == inner
-                    || !(outer.layers & inner.layers)
+        for (var i = 0; i < this.list.length - 1; i++) {
+            var outer = this.list[i];
+            for (var j = i + 1; j < this.list.length; j++) {
+                var inner = this.list[j];
+                if (!(outer.layers & inner.layers)
                     || outer.collisions.has(inner)) {
                     return;
                 }
-                var manifold = new NtManifold(inner, outer);
-                if (that.collisionResolver.hasCollision(manifold)) {
-                    outer.collisions.add(inner);
-                    inner.collisions.add(outer);
-                    that.collisionResolver.resolve(manifold);
+                if (that.collisionResolver.isCollisionLikely(inner, outer)) {
+                    console.log("collision likely!");
+                    var manifold = new NtManifold(inner, outer);
+                    if (that.collisionResolver.hasCollision(manifold)) {
+                        outer.collisions.add(inner);
+                        inner.collisions.add(outer);
+                        that.collisionResolver.resolve(manifold);
+                    }
                 }
-            });
-        });
+            }
+        }
     };
     NtWorld.prototype.add = function (object) {
         this.list.push(object);
@@ -529,19 +409,12 @@ var NtWorld =  (function () {
     };
     return NtWorld;
 }());
-var NtShapeBase =  (function () {
+//# sourceMappingURL=NtWorld.js.map
+"use strict";
+var NtShapeBase = /** @class */ (function () {
     function NtShapeBase() {
-        this._bounds = null;
         this._area = -1;
     }
-    Object.defineProperty(NtShapeBase.prototype, "bounds", {
-        get: function () {
-            this._bounds = this._bounds || this.calculate_bounds();
-            return this._bounds;
-        },
-        enumerable: true,
-        configurable: true
-    });
     Object.defineProperty(NtShapeBase.prototype, "area", {
         get: function () {
             if (this._area == -1) {
@@ -554,7 +427,9 @@ var NtShapeBase =  (function () {
     });
     return NtShapeBase;
 }());
-var NtBounds =  (function () {
+//# sourceMappingURL=NtShapeBase.js.map
+"use strict";
+var NtBounds = /** @class */ (function () {
     function NtBounds(min, max) {
         this.min = new NtVec2();
         this.max = new NtVec2();
@@ -563,6 +438,8 @@ var NtBounds =  (function () {
     }
     return NtBounds;
 }());
+//# sourceMappingURL=NtBounds.js.map
+"use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
         ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -573,14 +450,14 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-var NtCircleShape =  (function (_super) {
+var NtCircleShape = /** @class */ (function (_super) {
     __extends(NtCircleShape, _super);
     function NtCircleShape(radius) {
         var _this = _super.call(this) || this;
         _this.radius = radius;
         return _this;
     }
-    NtCircleShape.prototype.calculate_bounds = function () {
+    NtCircleShape.prototype.get_bounds_for_orientation = function () {
         return new NtBounds(new NtVec2(-this.radius, -this.radius), new NtVec2(this.radius, this.radius));
     };
     NtCircleShape.prototype.calculate_area = function () {
@@ -591,6 +468,8 @@ var NtCircleShape =  (function (_super) {
     };
     return NtCircleShape;
 }(NtShapeBase));
+//# sourceMappingURL=NtCircleShape.js.map
+"use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
         ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
@@ -601,17 +480,88 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-var NtRectangleShape =  (function (_super) {
+var NtPolygonShape = /** @class */ (function (_super) {
+    __extends(NtPolygonShape, _super);
+    function NtPolygonShape(vertices) {
+        var _this = _super.call(this) || this;
+        _this.normals = [];
+        _this.vertices = vertices;
+        _this.calculate_surface_normals();
+        return _this;
+    }
+    NtPolygonShape.prototype.get_bounds_for_orientation = function (orientation) {
+        var bounds = new NtBounds(new NtVec2(Number.MAX_VALUE, Number.MAX_VALUE), new NtVec2(-Number.MAX_VALUE, -Number.MAX_VALUE));
+        for (var i = 0; i < this.vertices.length; i++) {
+            var oriented_coordinates = NtVec2.rotate(this.vertices[i], orientation);
+            if (bounds.min.x > oriented_coordinates.x) {
+                bounds.min.x = oriented_coordinates.x;
+            }
+            if (bounds.min.y > oriented_coordinates.y) {
+                bounds.min.y = oriented_coordinates.y;
+            }
+            if (bounds.max.x < oriented_coordinates.x) {
+                bounds.max.x = oriented_coordinates.x;
+            }
+            if (bounds.max.y < oriented_coordinates.y) {
+                bounds.max.y = oriented_coordinates.y;
+            }
+        }
+        return bounds;
+    };
+    NtPolygonShape.prototype.calculate_surface_normals = function () {
+        // assume vertices are clockwise
+        for (var i = 0; i < this.vertices.length; i++) {
+            var vertex1 = this.vertices[i];
+            var vertex2 = this.vertices[(i + 1) % this.vertices.length];
+            var dx = vertex2.x - vertex1.x;
+            var dy = vertex2.y - vertex1.y;
+            var edge = new NtVec2(dx, dy);
+            var normal = new NtVec2(-dy, dx).normalize();
+            if (NtVec2.crossProduct(edge, normal) < 0) {
+                this.normals.push(normal);
+            }
+            else {
+                this.normals.push(normal.negate());
+            }
+        }
+    };
+    NtPolygonShape.prototype.get_support_point = function (direction) {
+        var best_projection = -Number.MAX_VALUE;
+        var best_vertex = this.vertices[0];
+        this.vertices.forEach(function (vertex) {
+            var projection = NtVec2.dotProduct(vertex, direction);
+            if (projection > best_projection) {
+                best_vertex = vertex;
+                best_projection = projection;
+            }
+        });
+        return best_vertex;
+    };
+    return NtPolygonShape;
+}(NtShapeBase));
+//# sourceMappingURL=NtPolygonShape.js.map
+"use strict";
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+var NtRectangleShape = /** @class */ (function (_super) {
     __extends(NtRectangleShape, _super);
     function NtRectangleShape(width, height) {
-        var _this = _super.call(this) || this;
+        var _this = _super.call(this, [new NtVec2(-width / 2, -height / 2),
+            new NtVec2(width / 2, -height / 2),
+            new NtVec2(width / 2, height / 2),
+            new NtVec2(-width / 2, height / 2)]) || this;
         _this.width = width;
         _this.height = height;
         return _this;
     }
-    NtRectangleShape.prototype.calculate_bounds = function () {
-        return new NtBounds(new NtVec2(-this.width / 2, -this.height / 2), new NtVec2(this.width / 2, this.height / 2));
-    };
     NtRectangleShape.prototype.calculate_area = function () {
         return this.width * this.height;
     };
@@ -619,39 +569,48 @@ var NtRectangleShape =  (function (_super) {
         return "NtRectangleShape{width: " + this.width + ", height: " + this.height + "}";
     };
     return NtRectangleShape;
-}(NtShapeBase));
-var NtAABB =  (function () {
+}(NtPolygonShape));
+//# sourceMappingURL=NtRectangleShape.js.map
+"use strict";
+var NtAABB = /** @class */ (function () {
     function NtAABB() {
         this.min = new NtVec2();
         this.max = new NtVec2();
     }
     return NtAABB;
 }());
-var NtCollisionResolver =  (function () {
+//# sourceMappingURL=NtAABB.js.map
+"use strict";
+var NtCollisionResolver = /** @class */ (function () {
     function NtCollisionResolver() {
     }
+    NtCollisionResolver.prototype.isCollisionLikely = function (A, B) {
+        var a_shape = A.shape;
+        var b_shape = B.shape;
+        if (a_shape instanceof NtPolygonShape
+            && b_shape instanceof NtCircleShape) {
+            return NtCollisionUtils.AABBvsCircle(A, B);
+        }
+        else if (a_shape instanceof NtCircleShape
+            && b_shape instanceof NtPolygonShape) {
+            return NtCollisionUtils.AABBvsCircle(B, A);
+        }
+        else {
+            return NtCollisionUtils.AABBvsAABB(A, B);
+        }
+    };
     NtCollisionResolver.prototype.hasCollision = function (manifold) {
         var A = manifold.A;
         var B = manifold.B;
         var a_shape = A.shape;
         var b_shape = B.shape;
-        if (a_shape instanceof NtRectangleShape
-            && b_shape instanceof NtRectangleShape) {
-            return NtCollisionUtils.AABBvsAABB(manifold);
+        if (a_shape instanceof NtPolygonShape
+            && b_shape instanceof NtPolygonShape) {
+            return NtCollisionUtils.polygonVsPolygon(manifold);
         }
         else if (a_shape instanceof NtCircleShape
             && b_shape instanceof NtCircleShape) {
             return NtCollisionUtils.CircleVsCircle(manifold);
-        }
-        else if (a_shape instanceof NtRectangleShape
-            && b_shape instanceof NtCircleShape) {
-            return NtCollisionUtils.AABBvsCircle(manifold);
-        }
-        else if (a_shape instanceof NtCircleShape
-            && b_shape instanceof NtRectangleShape) {
-            manifold.A = B;
-            manifold.B = A;
-            return NtCollisionUtils.AABBvsCircle(manifold);
         }
         return false;
     };
@@ -661,20 +620,28 @@ var NtCollisionResolver =  (function () {
         var relativeVelocity = NtVec2.subtract(B.velocity, A.velocity);
         var collisionNormal = manifold.normal;
         var velocityAlondNormal = NtVec2.dotProduct(relativeVelocity, collisionNormal);
+        // ignore collision if objects are not moving towards each other
         if (velocityAlondNormal > 0) {
             return;
         }
+        // calculate restitution
         var e = Math.min(A.material.restitution, B.material.restitution);
+        // calculate impulse scalar
         var j = -(1 + e) * velocityAlondNormal;
         j /= A.inverse_mass + B.inverse_mass;
+        // apply impulse
         var impulse = NtVec2.multiply(collisionNormal, j);
         A.apply_impulse(NtVec2.negate(impulse));
         B.apply_impulse(impulse);
+        // calculate friction
+        // recalculate after normal impulse is applied
         relativeVelocity = NtVec2.subtract(B.velocity, A.velocity);
         var tangent = (NtVec2.subtract(relativeVelocity, NtVec2.multiply(collisionNormal, velocityAlondNormal)));
         tangent.normalize();
+        // apply along the friction vector
         var jt = -NtVec2.dotProduct(relativeVelocity, tangent);
         jt = jt / (A.inverse_mass + B.inverse_mass);
+        // following Coulomb's law, mu is average between the two frictions
         var mu = (A.friction + B.friction) / 2;
         var friction_impulse = new NtVec2();
         if (Math.abs(jt) < j * mu) {
@@ -688,39 +655,32 @@ var NtCollisionResolver =  (function () {
     };
     return NtCollisionResolver;
 }());
-var NtCollisionUtils =  (function () {
+//# sourceMappingURL=NtCollisionResolver.js.map
+"use strict";
+var NtCollisionUtils = /** @class */ (function () {
     function NtCollisionUtils() {
     }
-    NtCollisionUtils.AABBvsAABB = function (manifold) {
-        var A = manifold.A;
-        var B = manifold.B;
+    NtCollisionUtils.AABBvsAABB = function (A, B) {
         var n = NtVec2.subtract(B.position, A.position);
         var abox = A.aabb;
         var bbox = B.aabb;
         var overlap = new NtVec2();
+        // half extents along x axis for each object
         var a_extent = (abox.max.x - abox.min.x) / 2;
         var b_extent = (bbox.max.x - bbox.min.x) / 2;
+        // calculate overlap on x axis
         overlap.x = a_extent + b_extent - Math.abs(n.x);
         if (overlap.x > 0) {
+            // half extents along y axis for each object
             var a_extent_1 = (abox.max.y - abox.min.y) / 2;
             var b_extent_1 = (bbox.max.y - bbox.min.y) / 2;
+            // calculate overlap on y axis
             overlap.y = a_extent_1 + b_extent_1 - Math.abs(n.y);
             if (overlap.y > 0) {
-                NtCollisionUtils.calculateNormal(manifold, overlap, n);
                 return true;
             }
         }
         return false;
-    };
-    NtCollisionUtils.calculateNormal = function (manifold, overlap, n) {
-        if (overlap.x > overlap.y) {
-            manifold.normal = new NtVec2(0, Math.sign(n.x));
-            manifold.penetration = overlap.x;
-        }
-        else {
-            manifold.normal = new NtVec2(Math.sign(n.y), 0);
-            manifold.penetration = overlap.y;
-        }
     };
     NtCollisionUtils.CircleVsCircle = function (manifold) {
         var A = manifold.A;
@@ -744,39 +704,34 @@ var NtCollisionUtils =  (function () {
         }
         return true;
     };
-    NtCollisionUtils.AABBvsCircle = function (manifold) {
-        var A = manifold.A;
-        var B = manifold.B;
+    NtCollisionUtils.AABBvsCircle = function (A, B) {
         var b_shape = B.shape;
         var abox = A.aabb;
         var temp_list = [
+            // top
             new NtVec2(abox.min.x, abox.min.y),
             new NtVec2(abox.max.x, abox.min.y),
+            // bottom
             new NtVec2(abox.min.x, abox.max.y),
             new NtVec2(abox.max.x, abox.max.y),
+            // left
             new NtVec2(abox.min.x, abox.min.y),
             new NtVec2(abox.min.x, abox.max.y),
+            // right
             new NtVec2(abox.max.x, abox.min.y),
             new NtVec2(abox.max.x, abox.max.y)
         ];
-        var closest = new NtVec2(Number.MAX_VALUE, Number.MAX_VALUE);
         var min_dist = Number.MAX_VALUE;
         for (var i = 0; i < 4; i++) {
             var side = NtCollisionUtils.segmentProjection(B.position, temp_list[i * 2], temp_list[i * 2 + 1]);
             var side_dist = NtVec2.distanceSquared(side, B.position);
             if (min_dist > side_dist) {
-                closest = side;
                 min_dist = side_dist;
             }
         }
-        var dist_squared = NtVec2.distanceSquared(closest, B.position);
-        if (dist_squared > b_shape.radius * b_shape.radius) {
+        if (min_dist > b_shape.radius * b_shape.radius) {
             return false;
         }
-        var distance = NtVec2.distance(closest, B.position);
-        var normal = NtVec2.subtract(B.position, closest).divide(distance);
-        manifold.penetration = b_shape.radius - distance;
-        manifold.normal = normal;
         return true;
     };
     NtCollisionUtils.segmentProjection = function (point, A, B) {
@@ -789,9 +744,43 @@ var NtCollisionUtils =  (function () {
         t = Math.max(0, Math.min(1, t));
         return new NtVec2(A.x + t * (B.x - A.x), A.y + t * (B.y - A.y));
     };
+    NtCollisionUtils.polygonVsPolygon = function (manifold) {
+        var penetration_result = this.axisLeastPenetration(manifold.A, manifold.B);
+        var penetration = penetration_result[0];
+        var vertex_index = penetration_result[1];
+        if (penetration < 0) {
+            // shapes not overlapping
+            return false;
+        }
+        manifold.penetration = penetration;
+        var shape_a = manifold.A.shape;
+        manifold.normal = NtVec2.rotate(shape_a.normals[vertex_index], manifold.A.orientation);
+        return true;
+    };
+    NtCollisionUtils.axisLeastPenetration = function (A, B) {
+        var best_distance = -Number.MAX_VALUE;
+        var best_index = -1;
+        var shape_a = A.shape;
+        var shape_b = B.shape;
+        for (var i = 0; i < shape_a.vertices.length; i++) {
+            var face_normal = NtVec2.rotate(shape_a.normals[i], A.orientation);
+            var relative_normal = NtVec2.rotate(face_normal, B.orientation);
+            var support_point_local = shape_b.get_support_point(relative_normal.negate());
+            var support_point = NtVec2.add(B.position, NtVec2.rotate(support_point_local, -B.orientation));
+            var vertex = NtVec2.add(A.position, NtVec2.rotate(shape_a.vertices[i], A.orientation));
+            var dot = NtVec2.dotProduct(face_normal, NtVec2.subtract(support_point, vertex));
+            if (dot > best_distance) {
+                best_distance = dot;
+                best_index = i;
+            }
+        }
+        return [-best_distance, best_index];
+    };
     return NtCollisionUtils;
 }());
-var NtManifold =  (function () {
+//# sourceMappingURL=NtCollisionUtils.js.map
+"use strict";
+var NtManifold = /** @class */ (function () {
     function NtManifold(A, B) {
         this.penetration = 0;
         this.normal = new NtVec2();
@@ -800,16 +789,21 @@ var NtManifold =  (function () {
     }
     return NtManifold;
 }());
-var circle4 = new NtBody(new NtVec2(150, 400), new NtCircleShape(40));
+//# sourceMappingURL=NtManifold.js.map
+"use strict";
+var circle4 = new NtBody(new NtVec2(150, 340), new NtRectangleShape(40, 40));
 circle4.material.density = 0.002;
-circle4.force.set(150, -50);
+circle4.force.set(150, -100);
+circle4.orientation = -Math.PI / 4;
 console.log(circle4);
 var circle7 = new NtBody(new NtVec2(450, 400), new NtCircleShape(40));
 circle7.material.density = 0.002;
 circle7.force.set(0, -350);
 console.log(circle7);
-var rect1 = new NtBody(new NtVec2(280, 270), new NtRectangleShape(350, 140));
+var rect1 = new NtBody(new NtVec2(280, 170), new NtRectangleShape(350, 140));
 rect1.material.density = 10;
+rect1.friction = 0.6;
+rect1.orientation = -Math.PI / 8;
 console.log(rect1);
 var circle5 = new NtBody(new NtVec2(150, 50), new NtCircleShape(40));
 circle5.material.density = 0.002;
@@ -824,10 +818,13 @@ var canvasContext = canvas.getContext("2d");
 var renderer = new Renderer(canvasContext, canvas.width, canvas.height);
 var world = new NtWorld(renderer);
 world.add(circle4);
-world.add(circle7);
 world.add(rect1);
+//world.add(circle5);
+//world.add(circle6);
+//world.add(circle7);
 setInterval(function () {
     var dt = 33 / 1000;
     world.step(dt);
     renderer.draw();
 }, 33);
+//# sourceMappingURL=main.js.map

@@ -46,6 +46,11 @@ class NtVec2 {
     normalize(): NtVec2 {
         return this.divide(this.length());
     }
+    negate(): NtVec2 {
+        this.x = -this.x;
+        this.y = -this.y;
+        return this;
+    }
     toString() {
         return `NtVec2{x: ${this.x}, y: ${this.y}}`;
     }
@@ -82,5 +87,19 @@ class NtVec2 {
     }
     static negate(A: NtVec2): NtVec2 {
         return new NtVec2(-A.x, -A.y);
+    }
+    static crossProduct(A: NtVec2, B: NtVec2): number {
+        return A.x * B.y - A.y * B.x;
+    }
+    static crossProductScalarSecond(A: NtVec2, scalar: number): NtVec2 {
+        return new NtVec2(scalar * A.y, -scalar * A.x);
+    }
+    static crossProductScalarFirst(A: NtVec2, scalar: number): NtVec2 {
+        return new NtVec2(-scalar * A.y, scalar * A.x);
+    }
+    static rotate(A: NtVec2, angle: number): NtVec2 {
+        let cos: number = Math.cos(angle);
+        let sin: number = Math.sin(angle);
+        return new NtVec2(cos * A.x - sin * A.y, sin * A.x + cos * A.y);
     }
 }

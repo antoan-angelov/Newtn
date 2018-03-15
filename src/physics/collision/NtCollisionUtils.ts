@@ -1,7 +1,5 @@
 class NtCollisionUtils {
-    static AABBvsAABB(manifold: NtManifold): boolean  {
-        let A: NtBody = manifold.A;
-        let B: NtBody = manifold.B;
+    static AABBvsAABB(A: NtBody, B: NtBody): boolean  {
         let n: NtVec2 = NtVec2.subtract(B.position, A.position);
         let abox: NtAABB = A.aabb;
         let bbox: NtAABB = B.aabb;
@@ -21,23 +19,10 @@ class NtCollisionUtils {
             // calculate overlap on y axis
             overlap.y = a_extent + b_extent - Math.abs(n.y);
             if (overlap.y > 0) {
-                NtCollisionUtils.calculateNormal(manifold, overlap, n);
                 return true;
             }
         }
         return false;
-    }
-
-    private static calculateNormal(manifold: NtManifold, overlap: NtVec2,
-            n: NtVec2) {
-        //  find out which axis has least penetration
-        if (overlap.x > overlap.y) {
-            manifold.normal = new NtVec2(0, Math.sign(n.x));
-            manifold.penetration = overlap.x;
-        } else {
-            manifold.normal = new NtVec2(Math.sign(n.y), 0);
-            manifold.penetration = overlap.y;
-        }
     }
 
     static CircleVsCircle(manifold: NtManifold): boolean {
@@ -63,9 +48,7 @@ class NtCollisionUtils {
         return true;
     }
 
-    static AABBvsCircle(manifold: NtManifold) {
-        let A: NtBody = manifold.A;
-        let B: NtBody = manifold.B;
+    static AABBvsCircle(A: NtBody, B: NtBody) {
         let b_shape: NtCircleShape = <NtCircleShape>B.shape;
         let abox: NtAABB = A.aabb;
         let temp_list: NtVec2[] = [
@@ -81,26 +64,18 @@ class NtCollisionUtils {
             // right
             new NtVec2(abox.max.x, abox.min.y),
             new NtVec2(abox.max.x, abox.max.y)];
-        let closest: NtVec2 = new NtVec2(Number.MAX_VALUE, Number.MAX_VALUE);
         let min_dist: number = Number.MAX_VALUE;
         for (let i: number = 0; i < 4; i++) {
             let side: NtVec2 = NtCollisionUtils.segmentProjection(B.position,
                 temp_list[i * 2], temp_list[i * 2 + 1]);
             let side_dist: number = NtVec2.distanceSquared(side, B.position);
             if (min_dist > side_dist) {
-                closest = side;
                 min_dist = side_dist;
             }
         }
-        let dist_squared: number = NtVec2.distanceSquared(closest, B.position);
-        if (dist_squared > b_shape.radius * b_shape.radius) {
+        if (min_dist > b_shape.radius * b_shape.radius) {
             return false;
         }
-        let distance: number = NtVec2.distance(closest, B.position);
-        let normal: NtVec2 =
-            NtVec2.subtract(B.position, closest).divide(distance);
-        manifold.penetration = b_shape.radius - distance;
-        manifold.normal = normal;
         return true;
     }
 
@@ -114,5 +89,47 @@ class NtCollisionUtils {
             + (point.y - A.y) * (B.y - A.y)) / segment_length_squared;
         t = Math.max(0, Math.min(1, t));
         return new NtVec2(A.x + t * (B.x - A.x), A.y + t * (B.y - A.y));
+    }
+
+    static polygonVsPolygon(manifold: NtManifold): boolean {
+        let penetration_result: [number, number] =
+            this.axisLeastPenetration(manifold.A, manifold.B);
+        let penetration: number = penetration_result[0];
+        let vertex_index: number = penetration_result[1];
+        if (penetration < 0) {
+            // shapes not overlapping
+            return false;
+        }
+        manifold.penetration = penetration;
+        let shape_a: NtPolygonShape = <NtPolygonShape>manifold.A.shape;
+        manifold.normal = NtVec2.rotate(shape_a.normals[vertex_index],
+            manifold.A.orientation);
+        return true;
+    }
+
+    static axisLeastPenetration(A: NtBody, B: NtBody): [number, number] {
+        let best_distance: number = -Number.MAX_VALUE;
+        let best_index: number = -1;
+        let shape_a: NtPolygonShape = <NtPolygonShape>A.shape;
+        let shape_b: NtPolygonShape = <NtPolygonShape>B.shape;
+        for (var i = 0; i < shape_a.vertices.length; i++) {
+            let face_normal: NtVec2 =
+                NtVec2.rotate(shape_a.normals[i], A.orientation);
+            let relative_normal: NtVec2 =
+                NtVec2.rotate(face_normal, B.orientation);
+            let support_point_local: NtVec2 =
+                shape_b.get_support_point(relative_normal.negate());
+            let support_point: NtVec2 = NtVec2.add(B.position,
+                NtVec2.rotate(support_point_local, -B.orientation));
+            let vertex: NtVec2 = NtVec2.add(A.position,
+                NtVec2.rotate(shape_a.vertices[i], A.orientation));
+            let dot: number = NtVec2.dotProduct(face_normal,
+                NtVec2.subtract(support_point, vertex));
+            if (dot > best_distance) {
+                best_distance = dot;
+                best_index = i;
+            }
+        }
+        return [-best_distance, best_index];
     }
 }

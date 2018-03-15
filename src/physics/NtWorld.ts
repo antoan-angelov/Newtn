@@ -13,21 +13,25 @@ class NtWorld {
             element.collisions.clear();
             element.step(dt);
         });
-        this.list.forEach(function(outer) {
-            that.list.forEach(function(inner) {
-                if (outer == inner
-                    || !(outer.layers & inner.layers)
+        for (let i = 0; i < this.list.length-1; i++) {
+            let outer: NtBody = this.list[i];
+            for (let j = i+1; j < this.list.length; j++) {
+                let inner: NtBody = this.list[j];
+                if (!(outer.layers & inner.layers)
                     || outer.collisions.has(inner)) {
                     return;
                 }
-                let manifold: NtManifold = new NtManifold(inner, outer);
-                if (that.collisionResolver.hasCollision(manifold)) {
-                    outer.collisions.add(inner);
-                    inner.collisions.add(outer);
-                    that.collisionResolver.resolve(manifold);
+                if (that.collisionResolver.isCollisionLikely(inner, outer)) {
+                    console.log("collision likely!")
+                    let manifold: NtManifold = new NtManifold(inner, outer);
+                    if (that.collisionResolver.hasCollision(manifold)) {
+                        outer.collisions.add(inner);
+                        inner.collisions.add(outer);
+                        that.collisionResolver.resolve(manifold);
+                    }
                 }
-            });
-        });
+            }
+        }
     }
     add(object: NtBody) {
         this.list.push(object);

@@ -1,6 +1,7 @@
-let circle4: NtBody = new NtBody(new NtVec2(150, 400), new NtCircleShape(40));
+let circle4: NtBody = new NtBody(new NtVec2(150, 340), new NtRectangleShape(40, 40));
 circle4.material.density = 0.002;
-circle4.force.set(150, -50);
+circle4.force.set(150, -100);
+circle4.orientation = -Math.PI / 4;
 console.log(circle4);
 
 let circle7: NtBody = new NtBody(new NtVec2(450, 400), new NtCircleShape(40));
@@ -8,8 +9,10 @@ circle7.material.density = 0.002;
 circle7.force.set(0, -350);
 console.log(circle7);
 
-let rect1: NtBody = new NtBody(new NtVec2(280, 270), new NtRectangleShape(350, 140));
+let rect1: NtBody = new NtBody(new NtVec2(280, 170), new NtRectangleShape(350, 140));
 rect1.material.density = 10;
+rect1.friction = 0.6;
+rect1.orientation = -Math.PI / 8;
 console.log(rect1);
 
 let circle5: NtBody = new NtBody(new NtVec2(150, 50), new NtCircleShape(40));
@@ -30,10 +33,10 @@ let canvasContext: CanvasRenderingContext2D =
 let renderer = new Renderer(canvasContext, canvas.width, canvas.height);
 let world: NtWorld = new NtWorld(renderer);
 world.add(circle4);
+world.add(rect1);
 //world.add(circle5);
 //world.add(circle6);
-world.add(circle7);
-world.add(rect1);
+//world.add(circle7);
 
 setInterval(function() {
     let dt: number = 33/1000;

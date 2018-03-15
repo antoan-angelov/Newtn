@@ -4,7 +4,7 @@ class NtCircleShape extends NtShapeBase {
         super();
         this.radius = radius;
     }
-    calculate_bounds(): NtBounds  {
+    get_bounds_for_orientation(): NtBounds  {
         return new NtBounds(new NtVec2(-this.radius, -this.radius),
             new NtVec2(this.radius, this.radius));
     }

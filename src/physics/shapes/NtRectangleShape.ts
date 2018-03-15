@@ -1,14 +1,13 @@
-class NtRectangleShape extends NtShapeBase {
+class NtRectangleShape extends NtPolygonShape {
     readonly width: number;
     readonly height: number;
     constructor(width: number, height: number) {
-        super();
+        super([new NtVec2(-width/2, -height/2),
+                new NtVec2(width/2, -height/2),
+                new NtVec2(width/2, height/2),
+                new NtVec2(-width/2, height/2)]);
         this.width = width;
         this.height = height;
-    }
-    calculate_bounds(): NtBounds {
-        return new NtBounds(new NtVec2(-this.width/2, -this.height/2),
-            new NtVec2(this.width/2, this.height/2));
     }
     calculate_area(): number {
         return this.width * this.height;
