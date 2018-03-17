@@ -15,6 +15,11 @@ class NtVec2 {
         this.y -= other.y;
         return this;
     }
+    addScalar(scalar: number): NtVec2 {
+        this.x += scalar;
+        this.y += scalar;
+        return this;
+    }
     multiply(n: number): NtVec2 {
         this.x *= n;
         this.y *= n;

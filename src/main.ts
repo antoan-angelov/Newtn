@@ -1,4 +1,4 @@
-let circle4: NtBody = new NtBody(new NtVec2(150, 340), new NtRectangleShape(40, 40));
+let circle4: NtBody = new NtBody(new NtVec2(150, 340), new NtRectangleShape(140, 140));
 circle4.material.density = 0.002;
 circle4.force.set(150, -100);
 circle4.orientation = -Math.PI / 4;
@@ -9,9 +9,9 @@ circle7.material.density = 0.002;
 circle7.force.set(0, -350);
 console.log(circle7);
 
-let rect1: NtBody = new NtBody(new NtVec2(280, 170), new NtRectangleShape(350, 140));
-rect1.material.density = 10;
-rect1.friction = 0.6;
+let rect1: NtBody = new NtBody(new NtVec2(280, 170), new NtRectangleShape(70, 70));
+rect1.material.density = 0.0002;
+//rect1.friction = 0.6;
 rect1.orientation = -Math.PI / 8;
 console.log(rect1);
 
@@ -40,6 +40,7 @@ world.add(rect1);
 
 setInterval(function() {
     let dt: number = 33/1000;
+    canvasContext.clearRect(0, 0, canvas.width, canvas.height);
     world.step(dt);
     renderer.draw();
 }, 33);

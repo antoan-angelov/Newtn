@@ -11,7 +11,7 @@ class Renderer implements NtIRenderer {
         this.height = height;
     }
     draw():void {
-        this.canvas.clearRect(0, 0, this.width, this.height);
+        //this.canvas.clearRect(0, 0, this.width, this.height);
         let gradient = this.canvas.createLinearGradient(0, 0, this.width, this.height);
         gradient.addColorStop(0,'#90C3D4');
         gradient.addColorStop(1,"#82B0BF");

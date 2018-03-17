@@ -3,6 +3,7 @@ abstract class NtShapeBase {
 
     abstract calculate_area(): number;
     abstract get_bounds_for_orientation(orientation: number): NtBounds;
+    abstract get_moment_of_inertia(density: number): number;
 
     get area() {
         if (this._area == -1) {

@@ -9,7 +9,7 @@ class NtBody {
     layers: number = 1;
     friction: number = 1;
     angular_velocity: number = 0;
-    torque: number = 0;
+    torque: number = 1;
     orientation: number = 0;
     private _mass: number = 0;
     private _inverse_mass: number = 0;
@@ -26,9 +26,9 @@ class NtBody {
 
     step(dt: number) {
         this.calculate_mass();
+        this.velocity.add(NtVec2.multiply(this.force, this._inverse_mass * dt));
+        this.angular_velocity += this.torque * this._inverse_inertia * dt;
         this.position.add(NtVec2.multiply(this.velocity, dt));
-        this.velocity.add(NtVec2.multiply(this.force, dt / this.mass));
-        this.angular_velocity += this.torque * (dt / this._inertia);
         this.orientation += this.angular_velocity * dt;
 
         let bounds: NtBounds =
@@ -37,17 +37,20 @@ class NtBody {
         this.aabb.max.setVec(NtVec2.add(this.position, bounds.max));
     }
 
-    calculate_mass() {
+    private calculate_mass() {
         this._mass = this.shape.area * this.material.density;
         if (this._mass != 0) {
             this._inverse_mass = 1 / this._mass;
         } else {
             this._inverse_mass = Number.MAX_VALUE;
         }
+        this._inertia = this.shape.get_moment_of_inertia(this.material.density);
+        this._inverse_inertia = this._inertia != 0 ? 1 / this._inertia : 0;
     }
 
-    apply_impulse(impulse: NtVec2) {
+    apply_impulse(impulse: NtVec2, contact: NtVec2) {
         this.velocity.add(NtVec2.multiply(impulse, this.inverse_mass));
+        this.angular_velocity += NtVec2.crossProduct(contact, impulse) * this.inverse_inertia;
     }
 
     get mass(): number {
@@ -60,15 +63,6 @@ class NtBody {
 
     get inertia(): number {
         return this._inertia;
-    }
-
-    set inertia(value: number) {
-        this._inertia = value;
-        if (value != 0) {
-            this._inverse_inertia = 1 / value;
-        } else {
-            this._inverse_inertia = Number.MAX_VALUE;
-        }
     }
 
     get inverse_inertia(): number {

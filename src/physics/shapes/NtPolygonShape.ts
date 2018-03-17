@@ -61,4 +61,20 @@ abstract class NtPolygonShape extends NtShapeBase {
         });
         return best_vertex;
     }
+
+    get_moment_of_inertia(density: number): number {
+        // assume convex polygon
+        // assume center of mass is at (0, 0)
+        let inertia_total: number = 0;
+        for (let i = 0; i < this.vertices.length; i++) {
+            let v1: NtVec2 = this.vertices[i];
+            let v2: NtVec2 = this.vertices[(i + 1) % this.vertices.length];
+            let D: number = NtVec2.crossProduct(v1, v2);
+            let intx2: number = v1.x * v1.x + v2.x * v1.x + v2.x * v2.x;
+            let inty2: number = v1.y * v1.y + v2.y * v1.y + v2.y * v2.y;
+            inertia_total += (0.25 * D / 3) * (intx2 + inty2);
+        }
+        inertia_total *= density;
+        return inertia_total;
+    }
 }

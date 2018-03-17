@@ -22,7 +22,6 @@ class NtWorld {
                     return;
                 }
                 if (that.collisionResolver.isCollisionLikely(inner, outer)) {
-                    console.log("collision likely!")
                     let manifold: NtManifold = new NtManifold(inner, outer);
                     if (that.collisionResolver.hasCollision(manifold)) {
                         outer.collisions.add(inner);
