@@ -736,7 +736,7 @@ var NtCircleCircleCollision =  (function () {
         var B = this.manifold.B;
         var a_shape = A.shape;
         var b_shape = B.shape;
-        var n = NtVec2.subtract(B.position, A.position);
+        var normal = NtVec2.subtract(B.position, A.position);
         var min_distance = a_shape.radius + b_shape.radius;
         min_distance *= min_distance;
         if (NtVec2.distanceSquared(A.position, B.position) > min_distance) {
@@ -745,13 +745,14 @@ var NtCircleCircleCollision =  (function () {
         var distance = NtVec2.distance(A.position, B.position);
         if (distance != 0) {
             this.manifold.penetration = min_distance - distance;
-            this.manifold.normal = NtVec2.divide(n, distance);
+            this.manifold.normal = NtVec2.divide(normal, distance);
+            this.manifold.contact_points.push(new NtVec2().fromVec(A.position));
         }
         else {
             this.manifold.penetration = a_shape.radius;
             this.manifold.normal = new NtVec2(1, 0);
+            this.manifold.contact_points.push(NtVec2.multiply(this.manifold.normal, a_shape.radius).add(A.position));
         }
-        this.manifold.contact_points.push(NtVec2.add(A.position, NtVec2.rotate(NtVec2.multiply(this.manifold.normal, a_shape.radius), A.orientation)));
         return true;
     };
     return NtCircleCircleCollision;
@@ -980,9 +981,8 @@ var circle7 = new NtBody(new NtVec2(450, 400), new NtCircleShape(40));
 circle7.material.density = 0.002;
 circle7.force.set(0, -350);
 console.log(circle7);
-var rect1 = new NtBody(new NtVec2(280, 170), new NtRectangleShape(70, 70));
-rect1.material.density = 0.0002;
-rect1.make_static();
+var rect1 = new NtBody(new NtVec2(280, 170), new NtCircleShape(40));
+rect1.material.density = 0.02;
 rect1.orientation = -Math.PI / 8;
 console.log(rect1);
 var circle5 = new NtBody(new NtVec2(150, 50), new NtCircleShape(40));
