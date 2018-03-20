@@ -15,6 +15,7 @@ class NtBody {
     private _inverse_mass: number = 0;
     private _inertia: number = 1;
     private _inverse_inertia: number = 1;
+    private _is_static: boolean = false;
 
     constructor(position: NtVec2, shape: NtShapeBase,
             material: NtMaterial = new NtMaterial()) {
@@ -37,6 +38,20 @@ class NtBody {
         this.aabb.max.setVec(NtVec2.add(this.position, bounds.max));
     }
 
+    apply_impulse(impulse: NtVec2, contact: NtVec2) {
+        this.velocity.add(NtVec2.multiply(impulse, this.inverse_mass));
+        this.angular_velocity += NtVec2.crossProduct(contact, impulse) * this.inverse_inertia;
+    }
+
+    make_static() {
+        this.velocity.set(0, 0);
+        this.angular_velocity = 0;
+        this.force.set(0, 0);
+        this.material.density = Number.MAX_VALUE;
+        this.calculate_mass();
+        this._is_static = true;
+    }
+
     private calculate_mass() {
         this._mass = this.shape.area * this.material.density;
         if (this._mass != 0) {
@@ -46,11 +61,6 @@ class NtBody {
         }
         this._inertia = this.shape.get_moment_of_inertia(this.material.density);
         this._inverse_inertia = this._inertia != 0 ? 1 / this._inertia : 0;
-    }
-
-    apply_impulse(impulse: NtVec2, contact: NtVec2) {
-        this.velocity.add(NtVec2.multiply(impulse, this.inverse_mass));
-        this.angular_velocity += NtVec2.crossProduct(contact, impulse) * this.inverse_inertia;
     }
 
     get mass(): number {
@@ -67,5 +77,9 @@ class NtBody {
 
     get inverse_inertia(): number {
         return this._inverse_inertia;
+    }
+
+    get is_static(): boolean {
+        return this._is_static;
     }
 }

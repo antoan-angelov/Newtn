@@ -11,6 +11,7 @@ console.log(circle7);
 
 let rect1: NtBody = new NtBody(new NtVec2(280, 170), new NtRectangleShape(70, 70));
 rect1.material.density = 0.0002;
+rect1.make_static();
 //rect1.friction = 0.6;
 rect1.orientation = -Math.PI / 8;
 console.log(rect1);

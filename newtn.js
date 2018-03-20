@@ -165,6 +165,7 @@ var NtBody =  (function () {
         this._inverse_mass = 0;
         this._inertia = 1;
         this._inverse_inertia = 1;
+        this._is_static = false;
         this.position.fromVec(position);
         this.shape = shape;
         this.material = material;
@@ -180,6 +181,18 @@ var NtBody =  (function () {
         this.aabb.min.setVec(NtVec2.add(this.position, bounds.min));
         this.aabb.max.setVec(NtVec2.add(this.position, bounds.max));
     };
+    NtBody.prototype.apply_impulse = function (impulse, contact) {
+        this.velocity.add(NtVec2.multiply(impulse, this.inverse_mass));
+        this.angular_velocity += NtVec2.crossProduct(contact, impulse) * this.inverse_inertia;
+    };
+    NtBody.prototype.make_static = function () {
+        this.velocity.set(0, 0);
+        this.angular_velocity = 0;
+        this.force.set(0, 0);
+        this.material.density = Number.MAX_VALUE;
+        this.calculate_mass();
+        this._is_static = true;
+    };
     NtBody.prototype.calculate_mass = function () {
         this._mass = this.shape.area * this.material.density;
         if (this._mass != 0) {
@@ -190,10 +203,6 @@ var NtBody =  (function () {
         }
         this._inertia = this.shape.get_moment_of_inertia(this.material.density);
         this._inverse_inertia = this._inertia != 0 ? 1 / this._inertia : 0;
-    };
-    NtBody.prototype.apply_impulse = function (impulse, contact) {
-        this.velocity.add(NtVec2.multiply(impulse, this.inverse_mass));
-        this.angular_velocity += NtVec2.crossProduct(contact, impulse) * this.inverse_inertia;
     };
     Object.defineProperty(NtBody.prototype, "mass", {
         get: function () {
@@ -219,6 +228,13 @@ var NtBody =  (function () {
     Object.defineProperty(NtBody.prototype, "inverse_inertia", {
         get: function () {
             return this._inverse_inertia;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(NtBody.prototype, "is_static", {
+        get: function () {
+            return this._is_static;
         },
         enumerable: true,
         configurable: true
@@ -966,6 +982,7 @@ circle7.force.set(0, -350);
 console.log(circle7);
 var rect1 = new NtBody(new NtVec2(280, 170), new NtRectangleShape(70, 70));
 rect1.material.density = 0.0002;
+rect1.make_static();
 rect1.orientation = -Math.PI / 8;
 console.log(rect1);
 var circle5 = new NtBody(new NtVec2(150, 50), new NtCircleShape(40));
