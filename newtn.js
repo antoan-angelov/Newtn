@@ -439,7 +439,7 @@ var NtCircleShape =  (function (_super) {
         return Math.PI * this.radius * this.radius;
     };
     NtCircleShape.prototype.get_moment_of_inertia = function (density) {
-        return density * 0.5 * Math.PI * Math.pow(this.radius, 4);
+        return density * Math.PI * Math.pow(this.radius, 4);
     };
     NtCircleShape.prototype.toString = function () {
         return "NtCircleShape{radius: " + this.radius + "}";
@@ -593,6 +593,16 @@ var NtCollisionResolver =  (function () {
         else if (a_shape instanceof NtCircleShape
             && b_shape instanceof NtCircleShape) {
             return NtCollisionUtils.CircleVsCircle(manifold);
+        }
+        else if (a_shape instanceof NtCircleShape
+            && b_shape instanceof NtPolygonShape) {
+            return new NtCirclePolygonResolver(manifold).resolve();
+        }
+        else if (a_shape instanceof NtPolygonShape
+            && b_shape instanceof NtCircleShape) {
+            manifold.A = B;
+            manifold.B = A;
+            return new NtCirclePolygonResolver(manifold).resolve();
         }
         return false;
     };
@@ -893,7 +903,91 @@ var NtManifold =  (function () {
     }
     return NtManifold;
 }());
-var circle4 = new NtBody(new NtVec2(150, 340), new NtRectangleShape(140, 140));
+var NtCirclePolygonResolver =  (function () {
+    function NtCirclePolygonResolver(manifold) {
+        this.manifold = manifold;
+        this.A = manifold.A;
+        this.B = manifold.B;
+        this.circle_shape = this.A.shape;
+        this.poly_shape = this.B.shape;
+    }
+    NtCirclePolygonResolver.prototype.resolve = function () {
+        var edge_penetration = this.get_edge_min_penetration();
+        if (!edge_penetration) {
+            return false;
+        }
+        var face_index = edge_penetration[0];
+        var separation = edge_penetration[1];
+        if (separation < 0.0001) {
+            this.populate_manifold_for_circle_center_inside_poly(face_index);
+            return true;
+        }
+        return this.populate_manifold_according_to_side_of_edge(edge_penetration);
+    };
+    NtCirclePolygonResolver.prototype.populate_manifold_according_to_side_of_edge = function (edge_penetration) {
+        var face_index = edge_penetration[0];
+        var separation = edge_penetration[1];
+        var poly_vertices = this.poly_shape.vertices;
+        var v1 = poly_vertices[face_index];
+        var v2 = poly_vertices[(face_index + 1) % poly_vertices.length];
+        var center = NtVec2.rotate(NtVec2.subtract(this.A.position, this.B.position), -this.B.orientation);
+        var dot1 = NtVec2.dotProduct(NtVec2.subtract(center, v1), NtVec2.subtract(v2, v1));
+        var dot2 = NtVec2.dotProduct(NtVec2.subtract(center, v2), NtVec2.subtract(v1, v2));
+        this.manifold.penetration = this.circle_shape.radius - separation;
+        if (dot1 <= 0) {
+            return this.populate_manifold_for_nearest_vertex(v1, center);
+        }
+        else if (dot2 <= 0) {
+            return this.populate_manifold_for_nearest_vertex(v2, center);
+        }
+        return this.populate_manifold_for_nearest_face(v1, center, face_index);
+    };
+    NtCirclePolygonResolver.prototype.get_edge_min_penetration = function () {
+        var center = NtVec2.rotate(NtVec2.subtract(this.A.position, this.B.position), -this.B.orientation);
+        var separation = -Number.MAX_VALUE;
+        var face_normal = 0;
+        for (var i = 0; i < this.poly_shape.vertices.length; i++) {
+            var s = NtVec2.dotProduct(this.poly_shape.normals[i], NtVec2.subtract(center, this.poly_shape.vertices[i]));
+            if (s > this.circle_shape.radius) {
+                return null;
+            }
+            if (s > separation) {
+                separation = s;
+                face_normal = i;
+            }
+        }
+        return [face_normal, separation];
+    };
+    NtCirclePolygonResolver.prototype.populate_manifold_for_circle_center_inside_poly = function (face_index) {
+        this.manifold.normal.setVec(NtVec2.rotate(this.poly_shape.normals[face_index], this.B.orientation).negate());
+        this.manifold.contact_points.push(NtVec2.multiply(this.manifold.normal, this.circle_shape.radius)
+            .add(this.A.position));
+        this.manifold.penetration = this.circle_shape.radius;
+    };
+    NtCirclePolygonResolver.prototype.populate_manifold_for_nearest_vertex = function (vertex, center) {
+        var radius = this.circle_shape.radius;
+        if (NtVec2.distanceSquared(center, vertex) > radius * radius) {
+            return false;
+        }
+        var n = NtVec2.rotate(NtVec2.subtract(vertex, center), this.B.orientation).normalize();
+        this.manifold.normal = n;
+        vertex = NtVec2.rotate(vertex, this.B.orientation).add(this.B.position);
+        this.manifold.contact_points.push(vertex);
+        return true;
+    };
+    NtCirclePolygonResolver.prototype.populate_manifold_for_nearest_face = function (vertex, center, face_index) {
+        var n = this.poly_shape.normals[face_index];
+        if (NtVec2.dotProduct(NtVec2.subtract(center, vertex), n) > this.circle_shape.radius) {
+            return false;
+        }
+        n = NtVec2.rotate(n, this.B.orientation);
+        this.manifold.normal = n.negate();
+        this.manifold.contact_points.push(NtVec2.add(NtVec2.multiply(this.manifold.normal, this.circle_shape.radius), this.A.position));
+        return true;
+    };
+    return NtCirclePolygonResolver;
+}());
+var circle4 = new NtBody(new NtVec2(150, 340), new NtCircleShape(140));
 circle4.material.density = 0.002;
 circle4.force.set(150, -100);
 circle4.orientation = -Math.PI / 4;

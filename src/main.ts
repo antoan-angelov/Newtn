@@ -1,4 +1,4 @@
-let circle4: NtBody = new NtBody(new NtVec2(150, 340), new NtRectangleShape(140, 140));
+let circle4: NtBody = new NtBody(new NtVec2(150, 340), new NtCircleShape(140));
 circle4.material.density = 0.002;
 circle4.force.set(150, -100);
 circle4.orientation = -Math.PI / 4;

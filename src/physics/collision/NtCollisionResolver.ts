@@ -23,6 +23,15 @@ class NtCollisionResolver {
         } else if (a_shape instanceof NtCircleShape
                 && b_shape instanceof NtCircleShape) {
             return NtCollisionUtils.CircleVsCircle(manifold);
+        } else if (a_shape instanceof NtCircleShape
+                && b_shape instanceof NtPolygonShape) {
+            return new NtCirclePolygonResolver(manifold).resolve();
+        } else if (a_shape instanceof NtPolygonShape
+                && b_shape instanceof NtCircleShape) {
+            // make it circle first, polygon second
+            manifold.A = B;
+            manifold.B = A;
+            return new NtCirclePolygonResolver(manifold).resolve();
         }
         return false;
     }
