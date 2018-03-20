@@ -567,19 +567,7 @@ var NtCollisionResolver =  (function () {
     function NtCollisionResolver() {
     }
     NtCollisionResolver.prototype.isCollisionLikely = function (A, B) {
-        var a_shape = A.shape;
-        var b_shape = B.shape;
-        if (a_shape instanceof NtPolygonShape
-            && b_shape instanceof NtCircleShape) {
-            return NtCollisionUtils.AABBvsCircle(A, B);
-        }
-        else if (a_shape instanceof NtCircleShape
-            && b_shape instanceof NtPolygonShape) {
-            return NtCollisionUtils.AABBvsCircle(B, A);
-        }
-        else {
-            return NtCollisionUtils.AABBvsAABB(A, B);
-        }
+        return NtCollisionUtils.AABBvsAABB(A, B);
     };
     NtCollisionResolver.prototype.hasCollision = function (manifold) {
         var A = manifold.A;
@@ -588,21 +576,21 @@ var NtCollisionResolver =  (function () {
         var b_shape = B.shape;
         if (a_shape instanceof NtPolygonShape
             && b_shape instanceof NtPolygonShape) {
-            return NtCollisionUtils.polygonVsPolygon(manifold);
+            return new NtPolygonPolygonCollision(manifold).hasCollision();
         }
         else if (a_shape instanceof NtCircleShape
             && b_shape instanceof NtCircleShape) {
-            return NtCollisionUtils.CircleVsCircle(manifold);
+            return new NtCircleCircleCollision(manifold).hasCollision();
         }
         else if (a_shape instanceof NtCircleShape
             && b_shape instanceof NtPolygonShape) {
-            return new NtCirclePolygonResolver(manifold).resolve();
+            return new NtCirclePolygonCollision(manifold).hasCollision();
         }
         else if (a_shape instanceof NtPolygonShape
             && b_shape instanceof NtCircleShape) {
             manifold.A = B;
             manifold.B = A;
-            return new NtCirclePolygonResolver(manifold).resolve();
+            return new NtCirclePolygonCollision(manifold).hasCollision();
         }
         return false;
     };
@@ -711,9 +699,25 @@ var NtCollisionUtils =  (function () {
         }
         return false;
     };
-    NtCollisionUtils.CircleVsCircle = function (manifold) {
-        var A = manifold.A;
-        var B = manifold.B;
+    return NtCollisionUtils;
+}());
+var NtManifold =  (function () {
+    function NtManifold(A, B) {
+        this.penetration = 0;
+        this.normal = new NtVec2();
+        this.contact_points = [];
+        this.A = A;
+        this.B = B;
+    }
+    return NtManifold;
+}());
+var NtCircleCircleCollision =  (function () {
+    function NtCircleCircleCollision(manifold) {
+        this.manifold = manifold;
+    }
+    NtCircleCircleCollision.prototype.hasCollision = function () {
+        var A = this.manifold.A;
+        var B = this.manifold.B;
         var a_shape = A.shape;
         var b_shape = B.shape;
         var n = NtVec2.subtract(B.position, A.position);
@@ -724,56 +728,114 @@ var NtCollisionUtils =  (function () {
         }
         var distance = NtVec2.distance(A.position, B.position);
         if (distance != 0) {
-            manifold.penetration = min_distance - distance;
-            manifold.normal = NtVec2.divide(n, distance);
+            this.manifold.penetration = min_distance - distance;
+            this.manifold.normal = NtVec2.divide(n, distance);
         }
         else {
-            manifold.penetration = a_shape.radius;
-            manifold.normal = new NtVec2(1, 0);
+            this.manifold.penetration = a_shape.radius;
+            this.manifold.normal = new NtVec2(1, 0);
         }
-        manifold.contact_points.push(NtVec2.add(A.position, NtVec2.rotate(NtVec2.multiply(manifold.normal, a_shape.radius), A.orientation)));
+        this.manifold.contact_points.push(NtVec2.add(A.position, NtVec2.rotate(NtVec2.multiply(this.manifold.normal, a_shape.radius), A.orientation)));
         return true;
     };
-    NtCollisionUtils.AABBvsCircle = function (A, B) {
-        var b_shape = B.shape;
-        var abox = A.aabb;
-        var temp_list = [
-            new NtVec2(abox.min.x, abox.min.y), new NtVec2(abox.max.x, abox.min.y),
-            new NtVec2(abox.min.x, abox.max.y), new NtVec2(abox.max.x, abox.max.y),
-            new NtVec2(abox.min.x, abox.min.y), new NtVec2(abox.min.x, abox.max.y),
-            new NtVec2(abox.max.x, abox.min.y), new NtVec2(abox.max.x, abox.max.y)
-        ];
-        var min_dist = Number.MAX_VALUE;
-        for (var i = 0; i < 4; i++) {
-            var side = NtCollisionUtils.segmentProjection(B.position, temp_list[i * 2], temp_list[i * 2 + 1]);
-            var side_dist = NtVec2.distanceSquared(side, B.position);
-            if (min_dist > side_dist) {
-                min_dist = side_dist;
-            }
-        }
-        if (min_dist > b_shape.radius * b_shape.radius) {
+    return NtCircleCircleCollision;
+}());
+var NtCirclePolygonCollision =  (function () {
+    function NtCirclePolygonCollision(manifold) {
+        this.manifold = manifold;
+        this.A = manifold.A;
+        this.B = manifold.B;
+        this.circle_shape = this.A.shape;
+        this.poly_shape = this.B.shape;
+    }
+    NtCirclePolygonCollision.prototype.hasCollision = function () {
+        var edge_penetration = this.get_edge_min_penetration();
+        if (!edge_penetration) {
             return false;
         }
+        var face_index = edge_penetration[0];
+        var separation = edge_penetration[1];
+        if (separation < 0.0001) {
+            this.populate_manifold_for_circle_center_inside_poly(face_index);
+            return true;
+        }
+        return this.populate_manifold_according_to_side_of_edge(edge_penetration);
+    };
+    NtCirclePolygonCollision.prototype.populate_manifold_according_to_side_of_edge = function (edge_penetration) {
+        var face_index = edge_penetration[0];
+        var separation = edge_penetration[1];
+        var poly_vertices = this.poly_shape.vertices;
+        var v1 = poly_vertices[face_index];
+        var v2 = poly_vertices[(face_index + 1) % poly_vertices.length];
+        var center = NtVec2.rotate(NtVec2.subtract(this.A.position, this.B.position), -this.B.orientation);
+        var dot1 = NtVec2.dotProduct(NtVec2.subtract(center, v1), NtVec2.subtract(v2, v1));
+        var dot2 = NtVec2.dotProduct(NtVec2.subtract(center, v2), NtVec2.subtract(v1, v2));
+        this.manifold.penetration = this.circle_shape.radius - separation;
+        if (dot1 <= 0) {
+            return this.populate_manifold_for_nearest_vertex(v1, center);
+        }
+        else if (dot2 <= 0) {
+            return this.populate_manifold_for_nearest_vertex(v2, center);
+        }
+        return this.populate_manifold_for_nearest_face(v1, center, face_index);
+    };
+    NtCirclePolygonCollision.prototype.get_edge_min_penetration = function () {
+        var center = NtVec2.rotate(NtVec2.subtract(this.A.position, this.B.position), -this.B.orientation);
+        var separation = -Number.MAX_VALUE;
+        var face_normal = 0;
+        for (var i = 0; i < this.poly_shape.vertices.length; i++) {
+            var s = NtVec2.dotProduct(this.poly_shape.normals[i], NtVec2.subtract(center, this.poly_shape.vertices[i]));
+            if (s > this.circle_shape.radius) {
+                return null;
+            }
+            if (s > separation) {
+                separation = s;
+                face_normal = i;
+            }
+        }
+        return [face_normal, separation];
+    };
+    NtCirclePolygonCollision.prototype.populate_manifold_for_circle_center_inside_poly = function (face_index) {
+        this.manifold.normal.setVec(NtVec2.rotate(this.poly_shape.normals[face_index], this.B.orientation).negate());
+        this.manifold.contact_points.push(NtVec2.multiply(this.manifold.normal, this.circle_shape.radius)
+            .add(this.A.position));
+        this.manifold.penetration = this.circle_shape.radius;
+    };
+    NtCirclePolygonCollision.prototype.populate_manifold_for_nearest_vertex = function (vertex, center) {
+        var radius = this.circle_shape.radius;
+        if (NtVec2.distanceSquared(center, vertex) > radius * radius) {
+            return false;
+        }
+        var n = NtVec2.rotate(NtVec2.subtract(vertex, center), this.B.orientation).normalize();
+        this.manifold.normal = n;
+        vertex = NtVec2.rotate(vertex, this.B.orientation).add(this.B.position);
+        this.manifold.contact_points.push(vertex);
         return true;
     };
-    NtCollisionUtils.segmentProjection = function (point, A, B) {
-        var segment_length_squared = NtVec2.distanceSquared(A, B);
-        if (segment_length_squared == 0) {
-            return NtVec2.fromVec(A);
+    NtCirclePolygonCollision.prototype.populate_manifold_for_nearest_face = function (vertex, center, face_index) {
+        var n = this.poly_shape.normals[face_index];
+        if (NtVec2.dotProduct(NtVec2.subtract(center, vertex), n) > this.circle_shape.radius) {
+            return false;
         }
-        var t = ((point.x - A.x) * (B.x - A.x)
-            + (point.y - A.y) * (B.y - A.y)) / segment_length_squared;
-        t = Math.max(0, Math.min(1, t));
-        return new NtVec2(A.x + t * (B.x - A.x), A.y + t * (B.y - A.y));
+        n = NtVec2.rotate(n, this.B.orientation);
+        this.manifold.normal = n.negate();
+        this.manifold.contact_points.push(NtVec2.add(NtVec2.multiply(this.manifold.normal, this.circle_shape.radius), this.A.position));
+        return true;
     };
-    NtCollisionUtils.polygonVsPolygon = function (manifold) {
-        var A = manifold.A;
-        var B = manifold.B;
-        var penetration_a_result = this.axisLeastPenetration(A, B);
+    return NtCirclePolygonCollision;
+}());
+var NtPolygonPolygonCollision =  (function () {
+    function NtPolygonPolygonCollision(manifold) {
+        this.manifold = manifold;
+        this.A = manifold.A;
+        this.B = manifold.B;
+    }
+    NtPolygonPolygonCollision.prototype.hasCollision = function () {
+        var penetration_a_result = this.axis_least_penetration(this.A, this.B);
         if (penetration_a_result[0] >= 0) {
             return false;
         }
-        var penetration_b_result = this.axisLeastPenetration(B, A);
+        var penetration_b_result = this.axis_least_penetration(this.B, this.A);
         if (penetration_b_result[0] >= 0) {
             return false;
         }
@@ -783,16 +845,16 @@ var NtCollisionUtils =  (function () {
         var ref_index;
         var flip;
         if (penetration_a_result[0] > penetration_b_result[0]) {
-            ref_body = A;
-            inc_body = B;
-            ref_poly = A.shape;
+            ref_body = this.A;
+            inc_body = this.B;
+            ref_poly = this.A.shape;
             ref_index = penetration_a_result[1];
             flip = false;
         }
         else {
-            ref_body = B;
-            inc_body = A;
-            ref_poly = B.shape;
+            ref_body = this.B;
+            inc_body = this.A;
+            ref_poly = this.B.shape;
             ref_index = penetration_b_result[1];
             flip = true;
         }
@@ -813,25 +875,25 @@ var NtCollisionUtils =  (function () {
         if (this.clip(side_plane_normal, pos_side, inc_face) < 2) {
             return false;
         }
-        manifold.normal = NtVec2.multiply(ref_face_normal, flip ? -1 : 1);
-        manifold.penetration = 0;
+        this.manifold.normal = NtVec2.multiply(ref_face_normal, flip ? -1 : 1);
+        this.manifold.penetration = 0;
         var cp = 0;
         var separation = NtVec2.dotProduct(ref_face_normal, inc_face[0]) - ref_c;
         if (separation <= 0) {
-            manifold.contact_points[cp] = inc_face[0];
-            manifold.penetration += -separation;
+            this.manifold.contact_points[cp] = inc_face[0];
+            this.manifold.penetration += -separation;
             ++cp;
         }
         separation = NtVec2.dotProduct(ref_face_normal, inc_face[1]) - ref_c;
         if (separation <= 0) {
-            manifold.contact_points[cp] = inc_face[1];
-            manifold.penetration += -separation;
+            this.manifold.contact_points[cp] = inc_face[1];
+            this.manifold.penetration += -separation;
             ++cp;
-            manifold.penetration /= cp;
+            this.manifold.penetration /= cp;
         }
         return true;
     };
-    NtCollisionUtils.clip = function (n, c, face) {
+    NtPolygonPolygonCollision.prototype.clip = function (n, c, face) {
         var sp = 0;
         var out = [face[0], face[1]];
         var d1 = NtVec2.dotProduct(n, face[0]) - c;
@@ -851,7 +913,7 @@ var NtCollisionUtils =  (function () {
         face[1] = out[1];
         return sp;
     };
-    NtCollisionUtils.find_incident_face = function (ref_body, inc_body, reference_index) {
+    NtPolygonPolygonCollision.prototype.find_incident_face = function (ref_body, inc_body, reference_index) {
         var ref_poly = ref_body.shape;
         var inc_poly = inc_body.shape;
         var ref_normal = ref_poly.normals[reference_index];
@@ -872,7 +934,7 @@ var NtCollisionUtils =  (function () {
         result[1] = NtVec2.add(inc_body.position, NtVec2.rotate(inc_poly.vertices[inc_face], inc_body.orientation));
         return result;
     };
-    NtCollisionUtils.axisLeastPenetration = function (A, B) {
+    NtPolygonPolygonCollision.prototype.axis_least_penetration = function (A, B) {
         var best_distance = -Number.MAX_VALUE;
         var best_index = -1;
         var shape_a = A.shape;
@@ -891,101 +953,7 @@ var NtCollisionUtils =  (function () {
         }
         return [best_distance, best_index];
     };
-    return NtCollisionUtils;
-}());
-var NtManifold =  (function () {
-    function NtManifold(A, B) {
-        this.penetration = 0;
-        this.normal = new NtVec2();
-        this.contact_points = [];
-        this.A = A;
-        this.B = B;
-    }
-    return NtManifold;
-}());
-var NtCirclePolygonResolver =  (function () {
-    function NtCirclePolygonResolver(manifold) {
-        this.manifold = manifold;
-        this.A = manifold.A;
-        this.B = manifold.B;
-        this.circle_shape = this.A.shape;
-        this.poly_shape = this.B.shape;
-    }
-    NtCirclePolygonResolver.prototype.resolve = function () {
-        var edge_penetration = this.get_edge_min_penetration();
-        if (!edge_penetration) {
-            return false;
-        }
-        var face_index = edge_penetration[0];
-        var separation = edge_penetration[1];
-        if (separation < 0.0001) {
-            this.populate_manifold_for_circle_center_inside_poly(face_index);
-            return true;
-        }
-        return this.populate_manifold_according_to_side_of_edge(edge_penetration);
-    };
-    NtCirclePolygonResolver.prototype.populate_manifold_according_to_side_of_edge = function (edge_penetration) {
-        var face_index = edge_penetration[0];
-        var separation = edge_penetration[1];
-        var poly_vertices = this.poly_shape.vertices;
-        var v1 = poly_vertices[face_index];
-        var v2 = poly_vertices[(face_index + 1) % poly_vertices.length];
-        var center = NtVec2.rotate(NtVec2.subtract(this.A.position, this.B.position), -this.B.orientation);
-        var dot1 = NtVec2.dotProduct(NtVec2.subtract(center, v1), NtVec2.subtract(v2, v1));
-        var dot2 = NtVec2.dotProduct(NtVec2.subtract(center, v2), NtVec2.subtract(v1, v2));
-        this.manifold.penetration = this.circle_shape.radius - separation;
-        if (dot1 <= 0) {
-            return this.populate_manifold_for_nearest_vertex(v1, center);
-        }
-        else if (dot2 <= 0) {
-            return this.populate_manifold_for_nearest_vertex(v2, center);
-        }
-        return this.populate_manifold_for_nearest_face(v1, center, face_index);
-    };
-    NtCirclePolygonResolver.prototype.get_edge_min_penetration = function () {
-        var center = NtVec2.rotate(NtVec2.subtract(this.A.position, this.B.position), -this.B.orientation);
-        var separation = -Number.MAX_VALUE;
-        var face_normal = 0;
-        for (var i = 0; i < this.poly_shape.vertices.length; i++) {
-            var s = NtVec2.dotProduct(this.poly_shape.normals[i], NtVec2.subtract(center, this.poly_shape.vertices[i]));
-            if (s > this.circle_shape.radius) {
-                return null;
-            }
-            if (s > separation) {
-                separation = s;
-                face_normal = i;
-            }
-        }
-        return [face_normal, separation];
-    };
-    NtCirclePolygonResolver.prototype.populate_manifold_for_circle_center_inside_poly = function (face_index) {
-        this.manifold.normal.setVec(NtVec2.rotate(this.poly_shape.normals[face_index], this.B.orientation).negate());
-        this.manifold.contact_points.push(NtVec2.multiply(this.manifold.normal, this.circle_shape.radius)
-            .add(this.A.position));
-        this.manifold.penetration = this.circle_shape.radius;
-    };
-    NtCirclePolygonResolver.prototype.populate_manifold_for_nearest_vertex = function (vertex, center) {
-        var radius = this.circle_shape.radius;
-        if (NtVec2.distanceSquared(center, vertex) > radius * radius) {
-            return false;
-        }
-        var n = NtVec2.rotate(NtVec2.subtract(vertex, center), this.B.orientation).normalize();
-        this.manifold.normal = n;
-        vertex = NtVec2.rotate(vertex, this.B.orientation).add(this.B.position);
-        this.manifold.contact_points.push(vertex);
-        return true;
-    };
-    NtCirclePolygonResolver.prototype.populate_manifold_for_nearest_face = function (vertex, center, face_index) {
-        var n = this.poly_shape.normals[face_index];
-        if (NtVec2.dotProduct(NtVec2.subtract(center, vertex), n) > this.circle_shape.radius) {
-            return false;
-        }
-        n = NtVec2.rotate(n, this.B.orientation);
-        this.manifold.normal = n.negate();
-        this.manifold.contact_points.push(NtVec2.add(NtVec2.multiply(this.manifold.normal, this.circle_shape.radius), this.A.position));
-        return true;
-    };
-    return NtCirclePolygonResolver;
+    return NtPolygonPolygonCollision;
 }());
 var circle4 = new NtBody(new NtVec2(150, 340), new NtCircleShape(140));
 circle4.material.density = 0.002;

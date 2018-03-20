@@ -1,16 +1,6 @@
 class NtCollisionResolver {
     isCollisionLikely(A: NtBody, B: NtBody): boolean {
-        let a_shape: NtShapeBase = A.shape;
-        let b_shape: NtShapeBase = B.shape;
-        if (a_shape instanceof NtPolygonShape
-                && b_shape instanceof NtCircleShape) {
-            return NtCollisionUtils.AABBvsCircle(A, B);
-        } else if (a_shape instanceof NtCircleShape
-                && b_shape instanceof NtPolygonShape) {
-            return NtCollisionUtils.AABBvsCircle(B, A);
-        } else {
-            return NtCollisionUtils.AABBvsAABB(A, B);
-        }
+        return NtCollisionUtils.AABBvsAABB(A, B);
     }
     hasCollision(manifold: NtManifold): boolean {
         let A: NtBody = manifold.A;
@@ -19,19 +9,19 @@ class NtCollisionResolver {
         let b_shape: NtShapeBase = B.shape;
         if (a_shape instanceof NtPolygonShape
                 && b_shape instanceof NtPolygonShape) {
-            return NtCollisionUtils.polygonVsPolygon(manifold);
+            return new NtPolygonPolygonCollision(manifold).hasCollision();
         } else if (a_shape instanceof NtCircleShape
                 && b_shape instanceof NtCircleShape) {
-            return NtCollisionUtils.CircleVsCircle(manifold);
+            return new NtCircleCircleCollision(manifold).hasCollision();
         } else if (a_shape instanceof NtCircleShape
                 && b_shape instanceof NtPolygonShape) {
-            return new NtCirclePolygonResolver(manifold).resolve();
+            return new NtCirclePolygonCollision(manifold).hasCollision();
         } else if (a_shape instanceof NtPolygonShape
                 && b_shape instanceof NtCircleShape) {
             // make it circle first, polygon second
             manifold.A = B;
             manifold.B = A;
-            return new NtCirclePolygonResolver(manifold).resolve();
+            return new NtCirclePolygonCollision(manifold).hasCollision();
         }
         return false;
     }

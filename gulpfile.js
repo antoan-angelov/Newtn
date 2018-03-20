@@ -11,7 +11,7 @@ var distFiles = [
     'dist/physics/shapes/NtShapeBase.js',
     'dist/physics/shapes/*.js',
     'dist/physics/collision/*.js',
-    'dist/physics/collision/resolvers/*.js',
+    'dist/physics/collision/collision_checkers/*.js',
     'dist/main.js',
 ];
 

@@ -1,4 +1,4 @@
-class NtCirclePolygonResolver implements NtIResolver {
+class NtCirclePolygonCollision implements NtIResolver {
     manifold: NtManifold;
     A: NtBody;
     B: NtBody;
@@ -13,7 +13,7 @@ class NtCirclePolygonResolver implements NtIResolver {
         this.poly_shape = <NtPolygonShape>this.B.shape;
     }
 
-    resolve(): boolean {
+    hasCollision(): boolean {
         let edge_penetration: [number, number]|null = this.get_edge_min_penetration();
         if (!edge_penetration) {
             return false;
