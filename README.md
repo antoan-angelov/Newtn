@@ -21,4 +21,3 @@ Run `gulp watch` to compile every time you save a TypeScript file.
 * gravitational pulling
 * more accurate render loop
 * complex bodies
-* mouse dragging

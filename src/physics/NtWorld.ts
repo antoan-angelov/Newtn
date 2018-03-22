@@ -1,17 +1,21 @@
 class NtWorld {
     renderer: NtIRenderer;
     list: NtBody[];
+    joints: NtIJoint[];
     collisionResolver: NtCollisionResolver;
     constructor(renderer: NtIRenderer) {
         this.renderer = renderer;
         this.list = [];
+        this.joints = [];
         this.collisionResolver = new NtCollisionResolver();
     }
     step(dt: number) {
-        let that = this;
-        this.list.forEach(function(element) {
-            element.collisions.clear();
-            element.step(dt);
+        this.list.forEach(function(body) {
+            body.collisions.clear();
+            body.step(dt);
+        });
+        this.joints.forEach(function(joint) {
+            joint.resolve();
         });
         for (let i = 0; i < this.list.length-1; i++) {
             let outer: NtBody = this.list[i];
@@ -21,12 +25,12 @@ class NtWorld {
                     || outer.collisions.has(inner)) {
                     return;
                 }
-                if (that.collisionResolver.isCollisionLikely(inner, outer)) {
+                if (this.collisionResolver.isCollisionLikely(inner, outer)) {
                     let manifold: NtManifold = new NtManifold(inner, outer);
-                    if (that.collisionResolver.hasCollision(manifold)) {
+                    if (this.collisionResolver.hasCollision(manifold)) {
                         outer.collisions.add(inner);
                         inner.collisions.add(outer);
-                        that.collisionResolver.resolve(manifold);
+                        this.collisionResolver.resolve(manifold);
                     }
                 }
             }
@@ -43,5 +47,18 @@ class NtWorld {
         }
         this.list.splice(index, 1);
         this.renderer.remove(object);
+    }
+    addJoint(joint: NtIJoint) {
+        this.joints.push(joint);
+    }
+    body_under_point(point: NtVec2): NtBody|null {
+        for (let body of this.list) {
+            let point_local: NtVec2 = NtVec2.rotate(NtVec2.subtract(point, body.position),
+                -body.orientation);
+            if (body.is_point_in_body(point_local)) {
+                return body;
+            }
+        }
+        return null;
     }
 }

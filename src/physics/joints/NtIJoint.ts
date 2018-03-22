@@ -1,0 +1,3 @@
+interface NtIJoint {
+    resolve(): void;
+}

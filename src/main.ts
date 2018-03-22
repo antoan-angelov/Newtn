@@ -9,10 +9,11 @@ circle7.material.density = 0.002;
 circle7.force.set(0, -350);
 console.log(circle7);
 
-let rect1: NtBody = new NtBody(new NtVec2(280, 170), new NtCircleShape(40));
+let rect1: NtBody = new NtBody(new NtVec2(280, 170), new NtRectangleShape(40, 70));
 rect1.material.density = 0.02;
 //rect1.make_static();
 //rect1.friction = 0.6;
+//rect1.force.set(0, rect1.mass * 9.8);
 rect1.orientation = -Math.PI / 8;
 console.log(rect1);
 
@@ -45,3 +46,19 @@ setInterval(function() {
     world.step(dt);
     renderer.draw();
 }, 33);
+
+let mouse_joint: NtMouseJoint = new NtMouseJoint();
+world.addJoint(mouse_joint);
+canvas.addEventListener("mousedown", function(event){
+    let point: NtVec2 = new NtVec2(event.pageX - canvas.offsetLeft,
+        event.pageY - canvas.offsetTop);
+    mouse_joint.mouse_down(point);
+});
+canvas.addEventListener("mousemove", function(event){
+    let point: NtVec2 = new NtVec2(event.pageX - canvas.offsetLeft,
+        event.pageY - canvas.offsetTop);
+    mouse_joint.mouse_move(point);
+});
+canvas.addEventListener("mouseup", function(){
+    mouse_joint.mouse_up();
+});

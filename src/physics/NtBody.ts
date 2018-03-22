@@ -52,6 +52,10 @@ class NtBody {
         this._is_static = true;
     }
 
+    is_point_in_body(point: NtVec2): boolean {
+        return this.shape.is_point_in_shape(point);
+    }
+
     private calculate_mass() {
         this._mass = this.shape.area * this.material.density;
         if (this._mass != 0) {

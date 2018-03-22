@@ -77,4 +77,27 @@ abstract class NtPolygonShape extends NtShapeBase {
         inertia_total *= density;
         return inertia_total;
     }
+
+    is_point_in_shape(point: NtVec2): boolean {
+        let expected_sign: number = 0;
+        for (let i = 0; i < this.vertices.length; i++) {
+            let v1: NtVec2 = this.vertices[i];
+            let v2: NtVec2 = this.vertices[(i + 1) % this.vertices.length];
+            let D: number = this.cross_product(v1, point, v2);
+            if (D == 0) {
+                continue;
+            }
+            if (expected_sign == 0) {
+                expected_sign = Math.sign(D);
+            } else if (Math.sign(D) != expected_sign) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private cross_product(origin: NtVec2, point1: NtVec2, point2: NtVec2): number {
+        return NtVec2.crossProduct(NtVec2.subtract(point1, origin),
+            NtVec2.subtract(point2, origin));
+    }
 }

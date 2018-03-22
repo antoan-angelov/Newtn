@@ -14,6 +14,9 @@ class NtCircleShape extends NtShapeBase {
     get_moment_of_inertia(density: number): number {
         return density * Math.PI * Math.pow(this.radius, 4);
     }
+    is_point_in_shape(point: NtVec2): boolean {
+        return point.x * point.x + point.y * point.y < this.radius * this.radius;
+    }
     toString() {
         return `NtCircleShape{radius: ${this.radius}}`;
     }

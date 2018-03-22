@@ -193,6 +193,9 @@ var NtBody =  (function () {
         this.calculate_mass();
         this._is_static = true;
     };
+    NtBody.prototype.is_point_in_body = function (point) {
+        return this.shape.is_point_in_shape(point);
+    };
     NtBody.prototype.calculate_mass = function () {
         this._mass = this.shape.area * this.material.density;
         if (this._mass != 0) {
@@ -365,13 +368,16 @@ var NtWorld =  (function () {
     function NtWorld(renderer) {
         this.renderer = renderer;
         this.list = [];
+        this.joints = [];
         this.collisionResolver = new NtCollisionResolver();
     }
     NtWorld.prototype.step = function (dt) {
-        var that = this;
-        this.list.forEach(function (element) {
-            element.collisions.clear();
-            element.step(dt);
+        this.list.forEach(function (body) {
+            body.collisions.clear();
+            body.step(dt);
+        });
+        this.joints.forEach(function (joint) {
+            joint.resolve();
         });
         for (var i = 0; i < this.list.length - 1; i++) {
             var outer = this.list[i];
@@ -381,12 +387,12 @@ var NtWorld =  (function () {
                     || outer.collisions.has(inner)) {
                     return;
                 }
-                if (that.collisionResolver.isCollisionLikely(inner, outer)) {
+                if (this.collisionResolver.isCollisionLikely(inner, outer)) {
                     var manifold = new NtManifold(inner, outer);
-                    if (that.collisionResolver.hasCollision(manifold)) {
+                    if (this.collisionResolver.hasCollision(manifold)) {
                         outer.collisions.add(inner);
                         inner.collisions.add(outer);
-                        that.collisionResolver.resolve(manifold);
+                        this.collisionResolver.resolve(manifold);
                     }
                 }
             }
@@ -403,6 +409,19 @@ var NtWorld =  (function () {
         }
         this.list.splice(index, 1);
         this.renderer.remove(object);
+    };
+    NtWorld.prototype.addJoint = function (joint) {
+        this.joints.push(joint);
+    };
+    NtWorld.prototype.body_under_point = function (point) {
+        for (var _i = 0, _a = this.list; _i < _a.length; _i++) {
+            var body = _a[_i];
+            var point_local = NtVec2.rotate(NtVec2.subtract(point, body.position), -body.orientation);
+            if (body.is_point_in_body(point_local)) {
+                return body;
+            }
+        }
+        return null;
     };
     return NtWorld;
 }());
@@ -456,6 +475,9 @@ var NtCircleShape =  (function (_super) {
     };
     NtCircleShape.prototype.get_moment_of_inertia = function (density) {
         return density * Math.PI * Math.pow(this.radius, 4);
+    };
+    NtCircleShape.prototype.is_point_in_shape = function (point) {
+        return point.x * point.x + point.y * point.y < this.radius * this.radius;
     };
     NtCircleShape.prototype.toString = function () {
         return "NtCircleShape{radius: " + this.radius + "}";
@@ -540,6 +562,27 @@ var NtPolygonShape =  (function (_super) {
         }
         inertia_total *= density;
         return inertia_total;
+    };
+    NtPolygonShape.prototype.is_point_in_shape = function (point) {
+        var expected_sign = 0;
+        for (var i = 0; i < this.vertices.length; i++) {
+            var v1 = this.vertices[i];
+            var v2 = this.vertices[(i + 1) % this.vertices.length];
+            var D = this.cross_product(v1, point, v2);
+            if (D == 0) {
+                continue;
+            }
+            if (expected_sign == 0) {
+                expected_sign = Math.sign(D);
+            }
+            else if (Math.sign(D) != expected_sign) {
+                return false;
+            }
+        }
+        return true;
+    };
+    NtPolygonShape.prototype.cross_product = function (origin, point1, point2) {
+        return NtVec2.crossProduct(NtVec2.subtract(point1, origin), NtVec2.subtract(point2, origin));
     };
     return NtPolygonShape;
 }(NtShapeBase));
@@ -972,6 +1015,42 @@ var NtPolygonPolygonCollision =  (function () {
     };
     return NtPolygonPolygonCollision;
 }());
+var NtMouseJoint =  (function () {
+    function NtMouseJoint() {
+        this.mouse_position = new NtVec2();
+        this.point_local = new NtVec2();
+        this.dragged_body = null;
+    }
+    NtMouseJoint.prototype.resolve = function () {
+        if (!this.dragged_body) {
+            return;
+        }
+        var global_source = NtVec2.add(NtVec2.rotate(this.point_local, this.dragged_body.orientation), this.dragged_body.position);
+        var target_velocity = new NtVec2().fromVec(this.mouse_position);
+        target_velocity.subtract(global_source);
+        target_velocity.subtract(this.dragged_body.velocity);
+        this.dragged_body.angular_velocity = 0;
+        var target_impulse = NtVec2.multiply(target_velocity, this.dragged_body.mass);
+        this.dragged_body.apply_impulse(target_impulse, this.point_local);
+    };
+    NtMouseJoint.prototype.mouse_down = function (point) {
+        this.dragged_body = world.body_under_point(point);
+        this.mouse_position.setVec(point);
+        if (this.dragged_body != null) {
+            this.point_local = NtVec2.rotate(NtVec2.subtract(point, this.dragged_body.position), -this.dragged_body.orientation);
+        }
+    };
+    NtMouseJoint.prototype.mouse_move = function (point) {
+        if (!this.dragged_body) {
+            return;
+        }
+        this.mouse_position.setVec(point);
+    };
+    NtMouseJoint.prototype.mouse_up = function () {
+        this.dragged_body = null;
+    };
+    return NtMouseJoint;
+}());
 var circle4 = new NtBody(new NtVec2(150, 340), new NtCircleShape(140));
 circle4.material.density = 0.002;
 circle4.force.set(150, -100);
@@ -981,7 +1060,7 @@ var circle7 = new NtBody(new NtVec2(450, 400), new NtCircleShape(40));
 circle7.material.density = 0.002;
 circle7.force.set(0, -350);
 console.log(circle7);
-var rect1 = new NtBody(new NtVec2(280, 170), new NtCircleShape(40));
+var rect1 = new NtBody(new NtVec2(280, 170), new NtRectangleShape(40, 70));
 rect1.material.density = 0.02;
 rect1.orientation = -Math.PI / 8;
 console.log(rect1);
@@ -1005,3 +1084,16 @@ setInterval(function () {
     world.step(dt);
     renderer.draw();
 }, 33);
+var mouse_joint = new NtMouseJoint();
+world.addJoint(mouse_joint);
+canvas.addEventListener("mousedown", function (event) {
+    var point = new NtVec2(event.pageX - canvas.offsetLeft, event.pageY - canvas.offsetTop);
+    mouse_joint.mouse_down(point);
+});
+canvas.addEventListener("mousemove", function (event) {
+    var point = new NtVec2(event.pageX - canvas.offsetLeft, event.pageY - canvas.offsetTop);
+    mouse_joint.mouse_move(point);
+});
+canvas.addEventListener("mouseup", function () {
+    mouse_joint.mouse_up();
+});

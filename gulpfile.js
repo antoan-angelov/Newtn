@@ -12,6 +12,7 @@ var distFiles = [
     'dist/physics/shapes/*.js',
     'dist/physics/collision/*.js',
     'dist/physics/collision/collision_checkers/*.js',
+    'dist/physics/joints/*.js',
     'dist/main.js',
 ];
 
