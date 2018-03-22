@@ -156,6 +156,7 @@ var NtBody =  (function () {
         this.position = new NtVec2();
         this.velocity = new NtVec2();
         this.force = new NtVec2();
+        this.gravity = new NtVec2();
         this.layers = 1;
         this.friction = 1;
         this.angular_velocity = 0;
@@ -173,7 +174,13 @@ var NtBody =  (function () {
     }
     NtBody.prototype.step = function (dt) {
         this.calculate_mass();
-        this.velocity.add(NtVec2.multiply(this.force, this._inverse_mass * dt));
+        var gravity_force = NtVec2.multiply(this.gravity, this._mass);
+        console.log("mass in step is " + this._mass); 
+        console.log("grav " + this.gravity + " " + gravity_force);
+        var total_force = NtVec2.add(this.force, gravity_force);
+        console.log("total force " + total_force);
+        console.log("velocity diff " + NtVec2.multiply(total_force, this._inverse_mass * dt));
+        this.velocity.add(NtVec2.multiply(total_force, this._inverse_mass * dt));
         this.angular_velocity += this.torque * this._inverse_inertia * dt;
         this.position.add(NtVec2.multiply(this.velocity, dt));
         this.orientation += this.angular_velocity * dt;
@@ -189,6 +196,7 @@ var NtBody =  (function () {
         this.velocity.set(0, 0);
         this.angular_velocity = 0;
         this.force.set(0, 0);
+        this.gravity.set(0, 0);
         this.material.density = Number.MAX_VALUE;
         this.calculate_mass();
         this._is_static = true;
@@ -198,6 +206,7 @@ var NtBody =  (function () {
     };
     NtBody.prototype.calculate_mass = function () {
         this._mass = this.shape.area * this.material.density;
+        console.log("shape area " + this.shape.area + " " + this.material.density);
         if (this._mass != 0) {
             this._inverse_mass = 1 / this._mass;
         }
@@ -366,14 +375,17 @@ var NtVec2 =  (function () {
 }());
 var NtWorld =  (function () {
     function NtWorld(renderer) {
-        this.renderer = renderer;
         this.list = [];
         this.joints = [];
-        this.collisionResolver = new NtCollisionResolver();
+        this.collision_resolver = new NtCollisionResolver();
+        this.gravity = new NtVec2();
+        this.renderer = renderer;
     }
     NtWorld.prototype.step = function (dt) {
+        var that = this;
         this.list.forEach(function (body) {
             body.collisions.clear();
+            body.gravity.setVec(that.gravity);
             body.step(dt);
         });
         this.joints.forEach(function (joint) {
@@ -387,12 +399,12 @@ var NtWorld =  (function () {
                     || outer.collisions.has(inner)) {
                     return;
                 }
-                if (this.collisionResolver.isCollisionLikely(inner, outer)) {
+                if (this.collision_resolver.isCollisionLikely(inner, outer)) {
                     var manifold = new NtManifold(inner, outer);
-                    if (this.collisionResolver.hasCollision(manifold)) {
+                    if (this.collision_resolver.hasCollision(manifold)) {
                         outer.collisions.add(inner);
                         inner.collisions.add(outer);
-                        this.collisionResolver.resolve(manifold);
+                        this.collision_resolver.resolve(manifold);
                     }
                 }
             }
@@ -1060,8 +1072,8 @@ var circle7 = new NtBody(new NtVec2(450, 400), new NtCircleShape(40));
 circle7.material.density = 0.002;
 circle7.force.set(0, -350);
 console.log(circle7);
-var rect1 = new NtBody(new NtVec2(280, 170), new NtRectangleShape(40, 70));
-rect1.material.density = 0.02;
+var rect1 = new NtBody(new NtVec2(280, 170), new NtRectangleShape(100, 130));
+rect1.material.density = -0.5;
 rect1.orientation = -Math.PI / 8;
 console.log(rect1);
 var circle5 = new NtBody(new NtVec2(150, 50), new NtCircleShape(40));
@@ -1076,7 +1088,7 @@ var canvas = document.getElementById('myCanvas');
 var canvasContext = canvas.getContext("2d");
 var renderer = new Renderer(canvasContext, canvas.width, canvas.height);
 var world = new NtWorld(renderer);
-world.add(circle4);
+world.gravity.set(0, 9.8);
 world.add(rect1);
 setInterval(function () {
     var dt = 33 / 1000;

@@ -9,11 +9,12 @@ circle7.material.density = 0.002;
 circle7.force.set(0, -350);
 console.log(circle7);
 
-let rect1: NtBody = new NtBody(new NtVec2(280, 170), new NtRectangleShape(40, 70));
-rect1.material.density = 0.02;
+let rect1: NtBody = new NtBody(new NtVec2(280, 170), new NtRectangleShape(100, 130));
+rect1.material.density = 0.5;
 //rect1.make_static();
 //rect1.friction = 0.6;
-//rect1.force.set(0, rect1.mass * 9.8);
+//console.log("force is " + rect1.force)
+// force is NtVec2{x: 0, y: 13720.000000000002}
 rect1.orientation = -Math.PI / 8;
 console.log(rect1);
 
@@ -34,7 +35,8 @@ let canvasContext: CanvasRenderingContext2D =
 
 let renderer = new Renderer(canvasContext, canvas.width, canvas.height);
 let world: NtWorld = new NtWorld(renderer);
-world.add(circle4);
+world.gravity.set(0, 9.8);
+//world.add(circle4);
 world.add(rect1);
 //world.add(circle5);
 //world.add(circle6);

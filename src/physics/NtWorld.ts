@@ -1,17 +1,17 @@
 class NtWorld {
     renderer: NtIRenderer;
-    list: NtBody[];
-    joints: NtIJoint[];
-    collisionResolver: NtCollisionResolver;
+    list: NtBody[] = [];
+    joints: NtIJoint[] = [];
+    collision_resolver: NtCollisionResolver = new NtCollisionResolver();
+    gravity: NtVec2 = new NtVec2();
     constructor(renderer: NtIRenderer) {
         this.renderer = renderer;
-        this.list = [];
-        this.joints = [];
-        this.collisionResolver = new NtCollisionResolver();
     }
     step(dt: number) {
+        var that = this;
         this.list.forEach(function(body) {
             body.collisions.clear();
+            body.gravity.setVec(that.gravity);
             body.step(dt);
         });
         this.joints.forEach(function(joint) {
@@ -25,12 +25,12 @@ class NtWorld {
                     || outer.collisions.has(inner)) {
                     return;
                 }
-                if (this.collisionResolver.isCollisionLikely(inner, outer)) {
+                if (this.collision_resolver.isCollisionLikely(inner, outer)) {
                     let manifold: NtManifold = new NtManifold(inner, outer);
-                    if (this.collisionResolver.hasCollision(manifold)) {
+                    if (this.collision_resolver.hasCollision(manifold)) {
                         outer.collisions.add(inner);
                         inner.collisions.add(outer);
-                        this.collisionResolver.resolve(manifold);
+                        this.collision_resolver.resolve(manifold);
                     }
                 }
             }

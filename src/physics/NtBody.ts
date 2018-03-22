@@ -4,6 +4,7 @@ class NtBody {
     readonly position: NtVec2 = new NtVec2();
     readonly velocity: NtVec2 = new NtVec2();
     readonly force: NtVec2 = new NtVec2();
+    readonly gravity: NtVec2 = new NtVec2();
     shape: NtShapeBase;
     material: NtMaterial;
     layers: number = 1;
@@ -27,7 +28,9 @@ class NtBody {
 
     step(dt: number) {
         this.calculate_mass();
-        this.velocity.add(NtVec2.multiply(this.force, this._inverse_mass * dt));
+        let gravity_force: NtVec2 = NtVec2.multiply(this.gravity, this._mass);
+        let total_force: NtVec2 = NtVec2.add(this.force, gravity_force);
+        this.velocity.add(NtVec2.multiply(total_force, this._inverse_mass * dt));
         this.angular_velocity += this.torque * this._inverse_inertia * dt;
         this.position.add(NtVec2.multiply(this.velocity, dt));
         this.orientation += this.angular_velocity * dt;
@@ -47,6 +50,7 @@ class NtBody {
         this.velocity.set(0, 0);
         this.angular_velocity = 0;
         this.force.set(0, 0);
+        this.gravity.set(0, 0);
         this.material.density = Number.MAX_VALUE;
         this.calculate_mass();
         this._is_static = true;
