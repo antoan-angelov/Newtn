@@ -46,7 +46,6 @@ class NtCollisionResolver {
                 contact_point, ra, rb, ra_length, rb_length, denominator,
                 relative_vel, velocity_along_normal
             };
-
             // ignore collision if objects are not moving towards each other
             if (velocity_along_normal > 0) {
                 return;
@@ -54,7 +53,21 @@ class NtCollisionResolver {
 
             this.apply_impulse(manifold, collision_context);
             this.apply_friction(manifold, collision_context);
+            this.prevent_sinking(manifold);
         }
+    }
+
+    private prevent_sinking(manifold: NtManifold) {
+        let percent: number = 0.2;
+        let slop: number = 0.01;
+        let A: NtBody = manifold.A;
+        let B: NtBody = manifold.B;
+        let inverse_mass_sum: number = A.inverse_mass + B.inverse_mass;
+        let penetration_no_slop: number = Math.max(manifold.penetration - slop, 0);
+        let correction_magnitude: number = percent * penetration_no_slop / inverse_mass_sum;
+        let correction: NtVec2 = NtVec2.multiply(manifold.normal, correction_magnitude);
+        A.position.subtract(NtVec2.multiply(correction, A.inverse_mass));
+        B.position.add(NtVec2.multiply(correction, B.inverse_mass));
     }
 
     private apply_impulse(manifold: NtManifold, collision_context: any) {
@@ -92,7 +105,13 @@ class NtCollisionResolver {
             .subtract(NtVec2.crossProductScalarFirst(ra, A.angular_velocity));
         let collisionNormal = manifold.normal;
         let tangent: NtVec2 = NtVec2.subtract(relative_vel, NtVec2.multiply(collisionNormal,
-            NtVec2.dotProduct(relative_vel, collisionNormal))).normalize();
+            NtVec2.dotProduct(relative_vel, collisionNormal)));
+        if (tangent.x == 0 && tangent.y == 0) {
+            tangent.set(1, 0);
+        } else {
+            tangent.normalize();
+        }
+
         collision_context.tangent = tangent;
 
         // apply along the friction vector
