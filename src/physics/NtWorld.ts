@@ -4,14 +4,17 @@ class NtWorld {
     joints: NtIJoint[] = [];
     collision_resolver: NtCollisionResolver = new NtCollisionResolver();
     gravity: NtVec2 = new NtVec2();
+    raycaster: NtRaycaster;
     constructor(renderer: NtIRenderer) {
         this.renderer = renderer;
+        this.raycaster = new NtRaycaster(this);
     }
     step(dt: number) {
         var that = this;
         this.list.forEach(function(body) {
             body.collisions.clear();
             body.gravity.setVec(that.gravity);
+            body.raycaster = that.raycaster;
             body.step(dt);
         });
         this.joints.forEach(function(joint) {

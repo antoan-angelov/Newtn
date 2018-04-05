@@ -107,4 +107,7 @@ class NtVec2 {
         let sin: number = Math.sin(angle);
         return new NtVec2(cos * A.x - sin * A.y, sin * A.x + cos * A.y);
     }
+    static normalize(A: NtVec2): NtVec2 {
+        return new NtVec2().setVec(A).normalize();
+    }
 }

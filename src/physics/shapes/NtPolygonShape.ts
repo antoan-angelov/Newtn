@@ -100,4 +100,35 @@ abstract class NtPolygonShape extends NtShapeBase {
         return NtVec2.crossProduct(NtVec2.subtract(point1, origin),
             NtVec2.subtract(point2, origin));
     }
+
+    intersection_with_segment(start: NtVec2, end: NtVec2): NtVec2|null {
+        for (let i = 0; i < this.vertices.length; i++) {
+            let v1: NtVec2 = this.vertices[i];
+            let v2: NtVec2 = this.vertices[(i + 1) % this.vertices.length];
+            let result: NtVec2|null = this.segment_intersection(start, end, v1, v2);
+            if (result) {
+                return result;
+            }
+        }
+        return null;
+    }
+
+    private segment_intersection(start1: NtVec2, end1: NtVec2, start2: NtVec2, end2: NtVec2): NtVec2|null {
+        let p: NtVec2 = start1;
+        let r: NtVec2 = NtVec2.subtract(end1, start1);
+        let q: NtVec2 = start2;
+        let s: NtVec2 = NtVec2.subtract(end2, start2);
+        let qp: NtVec2 = NtVec2.subtract(q, p);
+        let rxs: number = NtVec2.crossProduct(r, s);
+        let qpxr: number = (NtVec2.crossProduct(qp, r));
+        let t: number = NtVec2.crossProduct(qp, s) / rxs;
+        let u: number = qpxr / rxs;
+        if (qpxr != 0 && rxs == 0) {
+            // parallel
+            return null;
+        }  else if (rxs != 0 && t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+            return NtVec2.multiply(r, t).add(p);
+        }
+        return null;
+    }
 }

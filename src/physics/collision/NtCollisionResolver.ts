@@ -29,6 +29,8 @@ class NtCollisionResolver {
         let A: NtBody = manifold.A;
         let B: NtBody = manifold.B;
         let collisionNormal = manifold.normal;
+        let a_impulses: [NtVec2, NtVec2][] = [];
+        let b_impulses: [NtVec2, NtVec2][] = [];
         for(let i = 0; i < manifold.contact_points.length; i++) {
             let contact_point: NtVec2 = manifold.contact_points[i];
             let ra: NtVec2 = NtVec2.subtract(contact_point, A.position);
@@ -44,7 +46,7 @@ class NtCollisionResolver {
                 + rb_length * rb_length * B.inverse_inertia;
             let collision_context = {
                 contact_point, ra, rb, ra_length, rb_length, denominator,
-                relative_vel, velocity_along_normal
+                relative_vel, velocity_along_normal, a_impulses, b_impulses
             };
             // ignore collision if objects are not moving towards each other
             if (velocity_along_normal > 0) {
@@ -53,13 +55,19 @@ class NtCollisionResolver {
 
             this.apply_impulse(manifold, collision_context);
             this.apply_friction(manifold, collision_context);
-            this.prevent_sinking(manifold);
         }
+        for (let impulse of a_impulses) {
+            A.apply_impulse(impulse[0], impulse[1]);
+        }
+        for (let impulse of b_impulses) {
+            B.apply_impulse(impulse[0], impulse[1]);
+        }
+        this.prevent_sinking(manifold);
     }
 
     private prevent_sinking(manifold: NtManifold) {
-        let percent: number = 0.2;
-        let slop: number = 0.01;
+        let percent: number = 0.6;
+        let slop: number = 0.06;
         let A: NtBody = manifold.A;
         let B: NtBody = manifold.B;
         let inverse_mass_sum: number = A.inverse_mass + B.inverse_mass;
@@ -76,8 +84,9 @@ class NtCollisionResolver {
         let ra: NtVec2 = collision_context.ra;
         let rb: NtVec2 = collision_context.rb;
         let impulse: NtVec2 =this.get_impulse(manifold, collision_context)
-        A.apply_impulse(NtVec2.negate(impulse), NtVec2.rotate(ra, -A.orientation));
-        B.apply_impulse(impulse, NtVec2.rotate(rb, -B.orientation));
+        collision_context.a_impulses.push([NtVec2.negate(impulse),
+            NtVec2.rotate(ra, -A.orientation)]);
+        collision_context.b_impulses.push([impulse, NtVec2.rotate(rb, -B.orientation)]);
     }
 
     private get_impulse(manifold: NtManifold, collision_context: any): NtVec2 {
@@ -116,8 +125,8 @@ class NtCollisionResolver {
 
         // apply along the friction vector
         let friction_impulse: NtVec2 = this.get_friction_impulse(manifold, collision_context);
-        A.apply_impulse(NtVec2.negate(friction_impulse), ra);
-        B.apply_impulse(friction_impulse, rb);
+        collision_context.a_impulses.push([NtVec2.negate(friction_impulse), ra])
+        collision_context.b_impulses.push([friction_impulse, rb])
     }
 
     private calculate_jt(manifold: NtManifold, collision_context: any) {

@@ -160,30 +160,41 @@ var NtBody =  (function () {
         this.layers = 1;
         this.friction = 1;
         this.angular_velocity = 0;
-        this.torque = 1;
+        this.torque = 0;
         this.orientation = 0;
+        this.raycaster = null;
         this._mass = 0;
         this._inverse_mass = 0;
         this._inertia = 1;
         this._inverse_inertia = 1;
         this._is_static = false;
+        this.resolver = new NtCollisionResolver();
         this.position.fromVec(position);
         this.shape = shape;
         this.material = material;
         this.calculate_mass();
     }
     NtBody.prototype.step = function (dt) {
-        this.calculate_mass();
-        var gravity_force = NtVec2.multiply(this.gravity, this._mass);
-        console.log("mass in step is " + this._mass); 
-        console.log("grav " + this.gravity + " " + gravity_force);
-        var total_force = NtVec2.add(this.force, gravity_force);
-        console.log("total force " + total_force);
-        console.log("velocity diff " + NtVec2.multiply(total_force, this._inverse_mass * dt));
-        this.velocity.add(NtVec2.multiply(total_force, this._inverse_mass * dt));
-        this.angular_velocity += this.torque * this._inverse_inertia * dt;
-        this.position.add(NtVec2.multiply(this.velocity, dt));
-        this.orientation += this.angular_velocity * dt;
+        if (!this._is_static) {
+            this.calculate_mass();
+            var gravity_force = NtVec2.multiply(this.gravity, this._mass);
+            var total_force = NtVec2.add(this.force, gravity_force);
+            this.velocity.add(NtVec2.multiply(total_force, this._inverse_mass * dt));
+            this.angular_velocity += this.torque * this._inverse_inertia * dt;
+            var future_position = NtVec2.multiply(this.velocity, dt).add(this.position);
+            var raycast_manifold = new NtRaycastManifold();
+            if (this.raycaster && this.raycaster.raycast(this, this.position, future_position, raycast_manifold)) {
+                this.position.setVec(raycast_manifold.intersection_global)
+                    .add(NtVec2.normalize(this.velocity).negate().multiply(2));
+                var collision_manifold = new NtManifold(this, raycast_manifold.other_body);
+                this.resolver.hasCollision(collision_manifold);
+                this.resolver.resolve(collision_manifold);
+            }
+            else {
+                this.position.setVec(future_position);
+            }
+            this.orientation += this.angular_velocity * dt;
+        }
         var bounds = this.shape.get_bounds_for_orientation(this.orientation);
         this.aabb.min.setVec(NtVec2.add(this.position, bounds.min));
         this.aabb.max.setVec(NtVec2.add(this.position, bounds.max));
@@ -205,13 +216,17 @@ var NtBody =  (function () {
         return this.shape.is_point_in_shape(point);
     };
     NtBody.prototype.calculate_mass = function () {
-        this._mass = this.shape.area * this.material.density;
-        console.log("shape area " + this.shape.area + " " + this.material.density);
-        if (this._mass != 0) {
-            this._inverse_mass = 1 / this._mass;
+        if (this.material.density == Number.MAX_VALUE) {
+            this._mass = Number.MAX_VALUE;
+            this._inverse_mass = 0;
+        }
+        else if (this.material.density == 0) {
+            this._mass = 0;
+            this._inverse_mass = Number.MAX_VALUE;
         }
         else {
-            this._inverse_mass = Number.MAX_VALUE;
+            this._mass = this.shape.area * this.material.density;
+            this._inverse_mass = (this._mass != 0) ? 1 / this._mass : Number.MAX_VALUE;
         }
         this._inertia = this.shape.get_moment_of_inertia(this.material.density);
         this._inverse_inertia = this._inertia != 0 ? 1 / this._inertia : 0;
@@ -371,6 +386,9 @@ var NtVec2 =  (function () {
         var sin = Math.sin(angle);
         return new NtVec2(cos * A.x - sin * A.y, sin * A.x + cos * A.y);
     };
+    NtVec2.normalize = function (A) {
+        return new NtVec2().setVec(A).normalize();
+    };
     return NtVec2;
 }());
 var NtWorld =  (function () {
@@ -380,12 +398,14 @@ var NtWorld =  (function () {
         this.collision_resolver = new NtCollisionResolver();
         this.gravity = new NtVec2();
         this.renderer = renderer;
+        this.raycaster = new NtRaycaster(this);
     }
     NtWorld.prototype.step = function (dt) {
         var that = this;
         this.list.forEach(function (body) {
             body.collisions.clear();
             body.gravity.setVec(that.gravity);
+            body.raycaster = that.raycaster;
             body.step(dt);
         });
         this.joints.forEach(function (joint) {
@@ -490,6 +510,29 @@ var NtCircleShape =  (function (_super) {
     };
     NtCircleShape.prototype.is_point_in_shape = function (point) {
         return point.x * point.x + point.y * point.y < this.radius * this.radius;
+    };
+    NtCircleShape.prototype.intersection_with_segment = function (E, L) {
+        var C = new NtVec2(0, 0);
+        var r = this.radius;
+        var d = NtVec2.subtract(L, E);
+        var f = NtVec2.subtract(E, C);
+        var a = NtVec2.dotProduct(d, d);
+        var b = 2 * NtVec2.dotProduct(f, d);
+        var c = NtVec2.dotProduct(f, f) - r * r;
+        var discriminant_squared = b * b - 4 * a * c;
+        if (discriminant_squared < 0) {
+            return null;
+        }
+        var discriminant = Math.sqrt(discriminant_squared);
+        var t1 = (-b - discriminant) / (2 * a);
+        var t2 = (-b + discriminant) / (2 * a);
+        if (t1 >= 0 && t1 <= 1) {
+            return NtVec2.multiply(d, t1).add(E);
+        }
+        if (t2 >= 0 && t2 <= 1) {
+            return NtVec2.multiply(d, t2).add(E);
+        }
+        return null;
     };
     NtCircleShape.prototype.toString = function () {
         return "NtCircleShape{radius: " + this.radius + "}";
@@ -596,6 +639,35 @@ var NtPolygonShape =  (function (_super) {
     NtPolygonShape.prototype.cross_product = function (origin, point1, point2) {
         return NtVec2.crossProduct(NtVec2.subtract(point1, origin), NtVec2.subtract(point2, origin));
     };
+    NtPolygonShape.prototype.intersection_with_segment = function (start, end) {
+        for (var i = 0; i < this.vertices.length; i++) {
+            var v1 = this.vertices[i];
+            var v2 = this.vertices[(i + 1) % this.vertices.length];
+            var result = this.segment_intersection(start, end, v1, v2);
+            if (result) {
+                return result;
+            }
+        }
+        return null;
+    };
+    NtPolygonShape.prototype.segment_intersection = function (start1, end1, start2, end2) {
+        var p = start1;
+        var r = NtVec2.subtract(end1, start1);
+        var q = start2;
+        var s = NtVec2.subtract(end2, start2);
+        var qp = NtVec2.subtract(q, p);
+        var rxs = NtVec2.crossProduct(r, s);
+        var qpxr = (NtVec2.crossProduct(qp, r));
+        var t = NtVec2.crossProduct(qp, s) / rxs;
+        var u = qpxr / rxs;
+        if (qpxr != 0 && rxs == 0) {
+            return null;
+        }
+        else if (rxs != 0 && t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+            return NtVec2.multiply(r, t).add(p);
+        }
+        return null;
+    };
     return NtPolygonShape;
 }(NtShapeBase));
 var __extends = (this && this.__extends) || (function () {
@@ -669,6 +741,8 @@ var NtCollisionResolver =  (function () {
         var A = manifold.A;
         var B = manifold.B;
         var collisionNormal = manifold.normal;
+        var a_impulses = [];
+        var b_impulses = [];
         for (var i = 0; i < manifold.contact_points.length; i++) {
             var contact_point = manifold.contact_points[i];
             var ra = NtVec2.subtract(contact_point, A.position);
@@ -684,7 +758,7 @@ var NtCollisionResolver =  (function () {
                 + rb_length * rb_length * B.inverse_inertia;
             var collision_context = {
                 contact_point: contact_point, ra: ra, rb: rb, ra_length: ra_length, rb_length: rb_length, denominator: denominator,
-                relative_vel: relative_vel, velocity_along_normal: velocity_along_normal
+                relative_vel: relative_vel, velocity_along_normal: velocity_along_normal, a_impulses: a_impulses, b_impulses: b_impulses
             };
             if (velocity_along_normal > 0) {
                 return;
@@ -692,6 +766,27 @@ var NtCollisionResolver =  (function () {
             this.apply_impulse(manifold, collision_context);
             this.apply_friction(manifold, collision_context);
         }
+        for (var _i = 0, a_impulses_1 = a_impulses; _i < a_impulses_1.length; _i++) {
+            var impulse = a_impulses_1[_i];
+            A.apply_impulse(impulse[0], impulse[1]);
+        }
+        for (var _a = 0, b_impulses_1 = b_impulses; _a < b_impulses_1.length; _a++) {
+            var impulse = b_impulses_1[_a];
+            B.apply_impulse(impulse[0], impulse[1]);
+        }
+        this.prevent_sinking(manifold);
+    };
+    NtCollisionResolver.prototype.prevent_sinking = function (manifold) {
+        var percent = 0.6;
+        var slop = 0.06;
+        var A = manifold.A;
+        var B = manifold.B;
+        var inverse_mass_sum = A.inverse_mass + B.inverse_mass;
+        var penetration_no_slop = Math.max(manifold.penetration - slop, 0);
+        var correction_magnitude = percent * penetration_no_slop / inverse_mass_sum;
+        var correction = NtVec2.multiply(manifold.normal, correction_magnitude);
+        A.position.subtract(NtVec2.multiply(correction, A.inverse_mass));
+        B.position.add(NtVec2.multiply(correction, B.inverse_mass));
     };
     NtCollisionResolver.prototype.apply_impulse = function (manifold, collision_context) {
         var A = manifold.A;
@@ -699,8 +794,9 @@ var NtCollisionResolver =  (function () {
         var ra = collision_context.ra;
         var rb = collision_context.rb;
         var impulse = this.get_impulse(manifold, collision_context);
-        A.apply_impulse(NtVec2.negate(impulse), NtVec2.rotate(ra, -A.orientation));
-        B.apply_impulse(impulse, NtVec2.rotate(rb, -B.orientation));
+        collision_context.a_impulses.push([NtVec2.negate(impulse),
+            NtVec2.rotate(ra, -A.orientation)]);
+        collision_context.b_impulses.push([impulse, NtVec2.rotate(rb, -B.orientation)]);
     };
     NtCollisionResolver.prototype.get_impulse = function (manifold, collision_context) {
         var j = this.calculate_j(manifold, collision_context);
@@ -723,11 +819,17 @@ var NtCollisionResolver =  (function () {
             .add(NtVec2.crossProductScalarFirst(rb, B.angular_velocity))
             .subtract(NtVec2.crossProductScalarFirst(ra, A.angular_velocity));
         var collisionNormal = manifold.normal;
-        var tangent = NtVec2.subtract(relative_vel, NtVec2.multiply(collisionNormal, NtVec2.dotProduct(relative_vel, collisionNormal))).normalize();
+        var tangent = NtVec2.subtract(relative_vel, NtVec2.multiply(collisionNormal, NtVec2.dotProduct(relative_vel, collisionNormal)));
+        if (tangent.x == 0 && tangent.y == 0) {
+            tangent.set(1, 0);
+        }
+        else {
+            tangent.normalize();
+        }
         collision_context.tangent = tangent;
         var friction_impulse = this.get_friction_impulse(manifold, collision_context);
-        A.apply_impulse(NtVec2.negate(friction_impulse), ra);
-        B.apply_impulse(friction_impulse, rb);
+        collision_context.a_impulses.push([NtVec2.negate(friction_impulse), ra]);
+        collision_context.b_impulses.push([friction_impulse, rb]);
     };
     NtCollisionResolver.prototype.calculate_jt = function (manifold, collision_context) {
         var jt = -NtVec2.dotProduct(collision_context.relative_vel, collision_context.tangent);
@@ -781,6 +883,38 @@ var NtManifold =  (function () {
         this.B = B;
     }
     return NtManifold;
+}());
+var NtRaycaster =  (function () {
+    function NtRaycaster(world) {
+        this.world = world;
+    }
+    NtRaycaster.prototype.raycast = function (emitting_body, origin, target, manifold) {
+        var bodies = this.world.list;
+        for (var _i = 0, bodies_1 = bodies; _i < bodies_1.length; _i++) {
+            var body = bodies_1[_i];
+            if (emitting_body == body) {
+                continue;
+            }
+            var origin_local = NtVec2.rotate(NtVec2.subtract(origin, body.position), -body.orientation);
+            var target_local = NtVec2.rotate(NtVec2.subtract(target, body.position), -body.orientation);
+            var intersection = body.shape.intersection_with_segment(origin_local, target_local);
+            if (intersection) {
+                manifold.intersection_global.setVec(NtVec2.add(NtVec2.rotate(intersection, body.orientation), body.position));
+                manifold.other_body = body;
+                return true;
+            }
+        }
+        return false;
+    };
+    return NtRaycaster;
+}());
+var NtRaycastManifold =  (function () {
+    function NtRaycastManifold() {
+        this.penetration = 0;
+        this.intersection_global = new NtVec2();
+        this.other_body = null;
+    }
+    return NtRaycastManifold;
 }());
 var NtCircleCircleCollision =  (function () {
     function NtCircleCircleCollision(manifold) {
@@ -1063,18 +1197,17 @@ var NtMouseJoint =  (function () {
     };
     return NtMouseJoint;
 }());
-var circle4 = new NtBody(new NtVec2(150, 340), new NtCircleShape(140));
+var circle4 = new NtBody(new NtVec2(150, 140), new NtRectangleShape(5, 5));
 circle4.material.density = 0.002;
-circle4.force.set(150, -100);
-circle4.orientation = -Math.PI / 4;
+circle4.force.set(10, 0);
 console.log(circle4);
 var circle7 = new NtBody(new NtVec2(450, 400), new NtCircleShape(40));
 circle7.material.density = 0.002;
 circle7.force.set(0, -350);
 console.log(circle7);
-var rect1 = new NtBody(new NtVec2(280, 170), new NtRectangleShape(100, 130));
-rect1.material.density = -0.5;
-rect1.orientation = -Math.PI / 8;
+var rect1 = new NtBody(new NtVec2(295, 170), new NtRectangleShape(0.5, 130));
+rect1.material.density = 0.5;
+rect1.make_static();
 console.log(rect1);
 var circle5 = new NtBody(new NtVec2(150, 50), new NtCircleShape(40));
 circle5.material.density = 0.002;
@@ -1088,7 +1221,7 @@ var canvas = document.getElementById('myCanvas');
 var canvasContext = canvas.getContext("2d");
 var renderer = new Renderer(canvasContext, canvas.width, canvas.height);
 var world = new NtWorld(renderer);
-world.gravity.set(0, 9.8);
+world.add(circle4);
 world.add(rect1);
 setInterval(function () {
     var dt = 33 / 1000;

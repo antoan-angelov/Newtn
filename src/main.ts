@@ -1,7 +1,8 @@
-let circle4: NtBody = new NtBody(new NtVec2(150, 340), new NtCircleShape(140));
+let circle4: NtBody = new NtBody(new NtVec2(150, 140), new NtRectangleShape(5, 5));
 circle4.material.density = 0.002;
-circle4.force.set(150, -100);
-circle4.orientation = -Math.PI / 4;
+//circle4.apply_impulse(new NtVec2(1290, 0), new NtVec2());
+circle4.force.set(10, 0);
+//circle4.orientation = -Math.PI / 9;
 console.log(circle4);
 
 let circle7: NtBody = new NtBody(new NtVec2(450, 400), new NtCircleShape(40));
@@ -9,13 +10,14 @@ circle7.material.density = 0.002;
 circle7.force.set(0, -350);
 console.log(circle7);
 
-let rect1: NtBody = new NtBody(new NtVec2(280, 170), new NtRectangleShape(100, 130));
+let rect1: NtBody = new NtBody(new NtVec2(295, 170), new NtRectangleShape(0.5, 130));
 rect1.material.density = 0.5;
+rect1.make_static();
 //rect1.make_static();
 //rect1.friction = 0.6;
 //console.log("force is " + rect1.force)
 // force is NtVec2{x: 0, y: 13720.000000000002}
-rect1.orientation = -Math.PI / 8;
+//rect1.orientation = -Math.PI / 8;
 console.log(rect1);
 
 let circle5: NtBody = new NtBody(new NtVec2(150, 50), new NtCircleShape(40));
@@ -35,8 +37,8 @@ let canvasContext: CanvasRenderingContext2D =
 
 let renderer = new Renderer(canvasContext, canvas.width, canvas.height);
 let world: NtWorld = new NtWorld(renderer);
-world.gravity.set(0, 9.8);
-//world.add(circle4);
+//world.gravity.set(0, 9.8);
+world.add(circle4);
 world.add(rect1);
 //world.add(circle5);
 //world.add(circle6);
